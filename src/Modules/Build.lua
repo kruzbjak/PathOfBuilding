@@ -476,6 +476,10 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 		self.viewMode = "COMPARE"
 	end)
 	self.controls.modeCompare.locked = function() return self.viewMode == "COMPARE" end
+	self.controls.modeStatFinder = new("ButtonControl"):ButtonControl({"LEFT",self.controls.modeCompare,"RIGHT"}, {4, 0, 100, 20}, "Stat Finder", function()
+		self.viewMode = "STAT_FINDER"
+	end)
+	self.controls.modeStatFinder.locked = function() return self.viewMode == "STAT_FINDER" end
 	-- Skills
 	self.controls.mainSkillLabel = new("LabelControl"):LabelControl({"TOPLEFT",self.anchorSideBar,"TOPLEFT"}, {0, 80, 300, 16}, "^7Main Skill:")
 	self.controls.mainSocketGroup = new("DropDownControl"):DropDownControl({"TOPLEFT",self.controls.mainSkillLabel,"BOTTOMLEFT"}, {0, 2, 300, 18}, nil, function(index, value)
@@ -622,6 +626,7 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	-- ensure that we don't refer to outdated calc tab sections
 	self.breakdownIndex = nil
 	self.compareTab = new("CompareTab"):CompareTab(self)
+	self.statFinderTab = new("StatFinderTab"):StatFinderTab(self)
 	-- Used for pined calcs panes
 	self.overlayPanes = { }
 
@@ -1203,6 +1208,10 @@ function buildMode:OnFrame(inputEvents)
 					self.viewMode = "NOTES"
 				elseif event.key == "7" then
 					self.viewMode = "PARTY"
+				elseif event.key == "8" then
+					self.viewMode = "COMPARE"
+				elseif event.key == "9" then
+					self.viewMode = "STAT_FINDER"
 				end
 			end
 		end
@@ -1315,6 +1324,8 @@ function buildMode:OnFrame(inputEvents)
 		self.calcsTab:Draw(tabViewPort, inputEvents)
 	elseif self.viewMode == "COMPARE" then
 		self.compareTab:Draw(tabViewPort, inputEvents)
+	elseif self.viewMode == "STAT_FINDER" then
+		self.statFinderTab:Draw(tabViewPort, inputEvents)
 	end
 
 	-- Draw overlay panes on top of all tab content (last = topmost)
