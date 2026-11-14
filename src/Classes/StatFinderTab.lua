@@ -51,7 +51,7 @@ local supportedStatsList = {
 			{property = "searchFlat", names = {}, essenceTypes = {}},
 			-- todo: do we want to somehow distinguish the local and global mods?
 			-- todo: what about the insanity essence mods and desolation essence 
-			-- ""AttackAndCastSpeedDuringFlaskEffect", "AttackCastSpeedPerNearbyEnemy" -- essence of desolation
+			-- ""AttackAndCastSpeedDuringFlaskEffect", "AttackCastSpeedPerNearbyEnemy" -- essence of desolation or legacy essence
 			-- "LocalIncreasedAttackSpeedAddedChaos" -- incursion mod
 			{property = "searchInc", names = {"LocalIncreasedAttackSpeed", "IncreasedAttackSpeed", "SocketedGemsHaveMoreAttackAndCastSpeed",
 											  "IncreasedAttackSpeedSupported", "IncreasedAttackAndCastSpeedSupported", "AttackSpeedDuringFlaskEffect",
@@ -65,7 +65,7 @@ local supportedStatsList = {
 		label = "Cast Speed",
 		groups = {
 			{property = "searchFlat", names = {}, essenceTypes = {}},
-			-- "AttackAndCastSpeedDuringFlaskEffect", "AttackCastSpeedPerNearbyEnemy" -- essence of desolation
+			-- "AttackAndCastSpeedDuringFlaskEffect", "AttackCastSpeedPerNearbyEnemy" -- essence of desolation or legacy essence
 			-- "IncreasedCastSpeedAddedChaos" -- incursion mod
 			-- "AttackAndCastSpeed" -- not sure what is this
 			{property = "searchInc", names = {"IncreasedCastSpeed", "IncreasedCastSpeedFishing", "SocketedGemsHaveMoreAttackAndCastSpeed",
@@ -192,32 +192,91 @@ local supportedStatsList = {
 	{
 		label = "Movement Speed",
 		groups = {
+			-- "MovementVelocitySpeed", "MovementVelocityDodge", "MovementVelocitySpellDodge" -- incursion mod
+			-- "MovementSpeedOnBurningChilledShockedGround", "MovementSpeedPerNearbyEnemyEssence1" -- essence of desolation
 			{property = "searchFlat", names = {}, essenceTypes = {}},
-			{property = "searchInc", names = {}, essenceTypes = {}},
+			{property = "searchInc", names = {"MovementVelocity", "MovementSpeedDuringFlaskEffect", "MovementSpeedIfHitRecently"}, essenceTypes = {21}},
 			{property = "searchMore", names = {}, essenceTypes = {}},
 		}
 	},
 	{
 		label = "Intelligence",
 		groups = {
-			{property = "searchFlat", names = {"Intelligence", "DexterityAndIntelligence", "HybridStrInt", "HybridDexInt", "StrengthIntelligenceForJewel", "StrengthAndIntelligence"}, essenceTypes = {24}},
-			{property = "searchInc", names = {"PercentageIntelligence", "PercentageIntelligenceMaven"}, essenceTypes = {}},
+			-- "DexterityAndIntelligence", "HybridStrInt", "HybridDexInt", "StrengthIntelligenceForJewel", "StrengthAndIntelligence" -- different files
+			{property = "searchFlat", names = {"Intelligence", "AllAttributes"}, essenceTypes = {14}},
+			{property = "searchInc", names = {"PercentageIntelligence", "PercentageIntelligenceMaven", "PercentageAllAttributes"}, essenceTypes = {}},
 			{property = "searchMore", names = {}, essenceTypes = {}},
 		}
 	},
 	{
 		label = "Strength",
 		groups = {
-			{property = "searchFlat", names = {}, essenceTypes = {}},
-			{property = "searchInc", names = {}, essenceTypes = {}},
+			{property = "searchFlat", names = {"Strength", "AllAttributes"}, essenceTypes = {9}},
+			{property = "searchInc", names = {"PercentageStrength", "PercentageStrengthMaven", "PercentageAllAttributes"}, essenceTypes = {}},
 			{property = "searchMore", names = {}, essenceTypes = {}},
 		}
 	},
 	{
 		label = "Dexterity",
 		groups = {
+			{property = "searchFlat", names = {"Dexterity", "AllAttributes"}, essenceTypes = {4}},
+			{property = "searchInc", names = {"PercentageDexterity", "PercentageDexterityMaven", "PercentageAllAttributes"}, essenceTypes = {}},
+			{property = "searchMore", names = {}, essenceTypes = {}},
+		}
+	},
+	{
+		label = "Reservation Efficiency",
+		groups = {
+			-- "IncreasedManaAndReservation" -- incursion mod
+			-- "ReducedReservation", "WrathReservation", "DisciplineReservation", "PurityOfLightningReservation", "ZealotryReservation", "AngerReservation", -- probably legacy
+			-- "PrideReservation", "DeterminationReservation", "PurityOfFireReservation", "HatredReservation", "GraceReservation", "PurityOfIceReservation", "MalevolenceReservation" -- probably legacy
+			-- "ArcticArmourReservationCost", "ArcticArmourReservationEfficiency" -- tul body armour old and new: 
+			-- "DeepwaterSwordAngerReservation" -- allflame did not go core, so currently legacy
 			{property = "searchFlat", names = {}, essenceTypes = {}},
+			{property = "searchInc", names = {"ManaReservationEfficiency", "DisplaySocketedGemsGetReducedReservation", "WrathReservationEfficiency",
+											  "DisciplineReservationEfficiency", "PurityOfLightningReservationEfficiency", "ZealotryReservationEfficiency",
+											  "AngerReservationEfficiency", "PrideReservationEfficiency", "DeterminationReservationEfficiency", "PurityOfFireReservationEfficiency",
+											  "HatredReservationEfficiency", "GraceReservationEfficiency", "PurityOfIceReservationEfficiency", "MalevolenceReservationEfficiency", }, essenceTypes = {13}},
+			{property = "searchMore", names = {}, essenceTypes = {}},
+		}
+	},
+	{
+		label = "Spell Suppression",
+		groups = {
+			-- "ChanceToSuppressSpellsOld", "ChanceToSuppressSpellsMavenOld" -- legacy
+			{property = "searchFlat", names = {"ChanceToSuppressSpells", "SpellDamageSuppressed"}, essenceTypes = {}},
 			{property = "searchInc", names = {}, essenceTypes = {}},
+			{property = "searchMore", names = {}, essenceTypes = {}},
+		}
+	},
+	{
+		label = "Physical Damage Reduction",
+		groups = {
+			-- todo: can be used to test showing str/dex/int tags, because these need str on for example boots
+			-- "ReducedPhysicalDamageTakenMaven" -- legacy
+			-- "AdditionalPhysicalDamageReductionDuringFlaskEffect" -- essence of desolation or legacy essence
+			{property = "searchFlat", names = {}, essenceTypes = {}},
+			{property = "searchInc", names = {"ReducedPhysicalDamageTaken"}, essenceTypes = {}},
+			{property = "searchMore", names = {}, essenceTypes = {}},
+		}
+	},
+	{
+		label = "Damage from Crits",
+		groups = {
+			-- ReducedCriticalStrikeDamageTaken -- influence legacy
+			{property = "searchFlat", names = {}, essenceTypes = {}},
+			{property = "searchInc", names = {"ReducedExtraDamageFromCrits", "ReducedDamageFromCriticalStrikesPerEnduranceCharge"}, essenceTypes = {22}},
+			{property = "searchMore", names = {}, essenceTypes = {}},
+		}
+	},
+	{
+		label = "Taken as",
+		groups = {
+			-- "PhysicalDamageTakenAsFirePercent", "PhysicalDamageTakenAsCold", "PhysicalDamageTakenAsFirePercent" -- legacy
+			-- "FireResistancePhysTakenAsFire", "ColdResistancePhysTakenAsCold", "LightningResistancePhysTakenAsLightning", -- incursion mod and perhaps also legacy
+			{property = "searchFlat", names = {}, essenceTypes = {}},
+			{property = "searchInc", names = {"PhysicalDamageTakenAsFireUber", "PhysicalDamageTakenAsColdUber", "PhysicalDamageTakenAsLightningUber", "PhysicalDamageTakenAsChaosUber",
+											  "PhysicalDamageTakenAsFireUberMaven", "PhysicalDamageTakenAsColdUberMaven", "PhysicalDamageTakenAsLightningUberMaven", "PhysicalDamageTakenAsChaosUberMaven"}, essenceTypes = {}},
 			{property = "searchMore", names = {}, essenceTypes = {}},
 		}
 	},
