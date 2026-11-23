@@ -97,7 +97,6 @@ local TierTags = {
 	INFLUENCED = 38
 }
 
--- todo: str/dex/int, what items have this base, shields and perhaps also boots don't, base armours do...
 local TIER_TAG_TO_NAME_MAP = {
 	[TierTags.NATURAL] = "NATURAL",
 	[TierTags.DEX_BASE] = "DEX",
@@ -144,7 +143,7 @@ local function sharedTagLogic(_, _, _, possibleTags, tags)
 		table.insert(tags, TierTags.ELEVATED)
 	elseif possibleTags[TierTags.ESSENCE_ONLY] and possibleTags[TierTags.ESSENCE_ONLY] == true then
 		table.insert(tags, TierTags.ESSENCE_ONLY)
-	else
+	elseif possibleTags[TierTags.INFLUENCED] == nil or possibleTags[TierTags.INFLUENCED] == false then
 		table.insert(tags, TierTags.NATURAL)
 	end
 	if possibleTags[TierTags.CRUSADER] and possibleTags[TierTags.CRUSADER] == true then
@@ -163,11 +162,11 @@ local function sharedTagLogic(_, _, _, possibleTags, tags)
 end
 
 local function armourTags(weightKeys, weightVals, _, possibleTags, tags, currentWeightKey)
-	sharedTagLogic(weightKeys, weightVals, _, possibleTags, tags)
-
 	for i, weightKey in ipairs(weightKeys) do
-		if weightKey == currentWeightKey and weightVals[i] == 0 then
-			return -- means that the armour item type has weight val = 0, was removed from the dex/int/str base set
+		-- if the weightVals[i] > 0, then it is explicitly said, that the mod can spawn on the item type unrestricted by the base type
+		-- for the case when weightVals[i] == 0 the mod should not be able to spawn on all bases, but can spawn on the specific dex/int/str bases
+		if weightKey == currentWeightKey and weightVals[i] > 0 then
+			return
 		end
 	end
 	
@@ -189,7 +188,7 @@ local function armourTags(weightKeys, weightVals, _, possibleTags, tags, current
 	if possibleTags[TierTags.STR_INT_BASE] and possibleTags[TierTags.STR_INT_BASE] == true then
 		table.insert(tags, TierTags.STR_INT_BASE)
 	end
-	if possibleTags[TierTags.STR_DEX_INT_BASE] and possibleTags[TierTags.STR_DEX_INT_BASE] == true then
+	if currentWeightKey == "body_armour" and possibleTags[TierTags.STR_DEX_INT_BASE] and possibleTags[TierTags.STR_DEX_INT_BASE] == true then
 		table.insert(tags, TierTags.STR_DEX_INT_BASE)
 	end
 	if possibleTags[TierTags.WARD_BASE] and possibleTags[TierTags.WARD_BASE] == true then
@@ -507,11 +506,11 @@ local WEIGHT_KEY_INFO = {
 	["str_int_armour"] = {priority = 4,
 						  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
 						  removes = {}, tagsPositive = {TierTags.STR_INT_BASE}, tagsNegative = {}},
-	["str_dex_int_armour"] = {priority = 4,
-							  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET}, -- there is no str/dex/int shield base
+	["str_dex_int_armour"] = {priority = 4, -- there is no str/dex/int shield base and helmet, gloves and boots are ward bases
+							  adds = {ItemBaseType.BODY_ARMOUR},
 							  removes = {}, tagsPositive = {TierTags.STR_DEX_INT_BASE}, tagsNegative = {}},
-	["ward_armour"] = {priority = 4,
-					   adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET},
+	["ward_armour"] = {priority = 4, -- there is no ward body armour
+					   adds = {ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET},
 					   removes = {}, tagsPositive = {TierTags.WARD_BASE}, tagsNegative = {}},
 	["dex_shield"] = {priority = 6,	-- all shield attribute specific bases are subset of all shield bases, that is why we give priority = 6 = lower than shield
 					  adds = {ItemBaseType.SHIELD},
@@ -766,38 +765,6 @@ function ModClass:getTiersForItemType(itemBaseType)
 	return filtered
 end
 
--- Check if this mod has any elevated tiers
-function ModClass:isElevatedMod()
-	for _, tier in ipairs(self.tiers) do
-		if tier.tags then
-			for itemBaseType, tagList in pairs(tier.tags) do
-				for _, tag in ipairs(tagList) do
-					if tag == TierTags.ELEVATED then
-						return true
-					end
-				end
-			end
-		end
-	end
-	return false
-end
-
--- Check if this mod has any essence-only tiers
-function ModClass:isEssenceOnlyMod()
-	for _, tier in ipairs(self.tiers) do
-		if tier.tags then
-			for itemBaseType, tagList in pairs(tier.tags) do
-				for _, tag in ipairs(tagList) do
-					if tag == TierTags.ESSENCE_ONLY then
-						return true
-					end
-				end
-			end
-		end
-	end
-	return false
-end
-
 -- Return structured display data for a mod filtered to a specific item type
 -- Returns: { modKey, type, group, tierCount, tiers: { { tierId, affix, levelReq, effect, tagNames } } }
 function ModClass:display(itemBaseType)
@@ -824,8 +791,6 @@ function ModClass:display(itemBaseType)
 		group = self.group,
 		tierCount = #tiers,
 		tiers = displayTiers,
-		isElevated = self:isElevatedMod(),
-		isEssenceOnly = self:isEssenceOnlyMod(),
 	}
 end
 
@@ -982,25 +947,11 @@ function ModClass.getTierItemsElevated(weightKeys, weightVals)
 	return itemBaseTypes, possibleTags
 end
 
-
-
---[[
--- Sort tiers within each group by level requirement
-for _, merged in ipairs(order) do
-local entry = groups[merged]
-table.sort(entry.tiers, function(a, b)
-return a.level < b.level
-end)
+function ModClass.sortTiers(self)
+	table.sort(self.tiers, function(a, b)
+		return a.levelReq < b.levelReq
+	end)
 end
-
--- Build final ordered list
-local mergedList = {}
-for _, mergeKey in ipairs(order) do
-table.insert(mergedList, groups[mergeKey])
-end
-
-return mergedList
-end]]
 
 -- Layout constants (shared across Draw, DrawConfig, DrawItems, DrawCalcs, etc.)=========================================================================================================================================
 
@@ -1250,7 +1201,6 @@ local supportedStatsList = {
 	{
 		label = "Physical Damage Reduction",
 		groups = {
-			-- todo: can be used to test showing str/dex/int tags, because these need str on for example boots
 			-- "ReducedPhysicalDamageTakenMaven" -- legacy
 			-- "AdditionalPhysicalDamageReductionDuringFlaskEffect" -- essence of desolation or legacy essence
 			{property = "searchFlat", names = {}, essenceTypes = {}},
@@ -1526,7 +1476,7 @@ end
 -- Mod search related functions  ========================================================================================================================================================================================
 
 -- Search ModExplicit for mods matching the given group names and filters
-local function searchModsInExplicit(groupNames, self)
+local function searchModsInExplicit(groupNames)
 	-- In ModExplicit.lua, the table structure is:
 	-- ["Intelligence1"] = { type = "Suffix", affix = "of the Pupil", "+(8-12) to Intelligence", statOrder = { 1206 }, level = 1, group = "Intelligence", weightKey = { "ring", "amulet", ..., "default", }, weightVal = { 1000, 1000, ..., 0 }, modTags = { "attribute" }, tradeHashes = { [328541901] = { "+(8-12) to Intelligence" }, } },
 	local modData = require("Data.ModExplicit")
@@ -1537,24 +1487,23 @@ local function searchModsInExplicit(groupNames, self)
 	for _, g in ipairs(groupNames) do
 		groupSet[g] = true
 	end
-	
+
 	for modId, mod in pairs(modData) do
 		-- Check group match
 		if not mod.group or not groupSet[mod.group] then
 			goto continue
 		end
-		
+
 		-- todo: do we want to apply the filters before we process the mod? perhaps makes it faster, but there would be double logic no, like if it can spawn on the item
 		-- TODO: if we want to add influence filter, or/and elevated filter
 		-- Apply item type filters
 		--if not modMatchesItemFilters(mod, self) then
 		--	goto continue
 		--end
-		
+
 		local modKey = ModClass.getModKey(modId)
 		local existingMod = results[modKey]
 		if existingMod then
-			-- todo: we already parsed mod from this group ... do we want to count them?
 			ModClass.fromExplicitData(modId, modKey, mod, existingMod)
 		else
 			local modParent = ModClass.fromExplicitData(modId, modKey, mod, existingMod)
@@ -1562,9 +1511,12 @@ local function searchModsInExplicit(groupNames, self)
 				results[modKey] = modParent
 			end
 		end
-		-- todo: do we want some natural tag or something like that?
-		-- todo: do we want to somehow sort the tiers
- 	::continue::
+		::continue::
+	end
+
+	-- Sort tiers for each mod by ilvl requirement
+	for _, result in pairs(results) do
+		result:sortTiers()
 	end
 	
 	return results
@@ -2076,17 +2028,12 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 					local modLine = string.format(
 						"%s^6%s^7 | ^3%s^7 | ^1%s^7 | ilvl %d^7 | %s",
 						indentStr,
-						tier.tierId,
+						displayData.modKey,
 						displayData.type or "N/A",
 						tier.affix or "",
 						tier.levelReq or 0,
 						tier.effect or ""
 					)
-					if displayData.isElevated then
-						modLine = modLine .. " ^9[Elevated]^7"
-					elseif displayData.isEssenceOnly then
-						modLine = modLine .. " ^9[Essence-only]^7"
-					end
 					-- Add tier tags
 					for _, tagName in ipairs(tier.tagNames) do
 						modLine = modLine .. string.format(" ^9[%s]^7", tagName)
@@ -2106,11 +2053,6 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 						displayData.type or "N/A",
 						displayData.tierCount
 					)
-					if displayData.isElevated then
-						headerLine = headerLine .. " ^9[Elevated]^7"
-					elseif displayData.isEssenceOnly then
-						headerLine = headerLine .. " ^9[Essence-only]^7"
-					end
 					
 					DrawString(xPos, yPos, "LEFT", 13, "VAR", headerLine)
 					table.insert(clickTargets, {yStart = yPos, yEnd = yPos + 18, type = "mod", data = {itemBaseType = itemBaseType, modKey = displayData.modKey}})
