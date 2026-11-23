@@ -4,6 +4,1004 @@
 -- Allows user to search stat mod sources
 --
 
+---@enum (key) ItemBaseType
+local ItemBaseType = {
+	AMULET = 1,
+	AXE = 2,
+	BELT = 3,
+	BODY_ARMOUR= 4,
+	BOOTS = 5,
+	BOW = 6,
+	CLAW = 7,
+	DAGGER = 8,
+	FISHING_ROD = 9,
+	GLOVES = 10,
+	HELMET = 11,
+	MACE = 12,
+	QUIVER = 13,
+	RING = 14,
+	SCEPTRE = 15,
+	SHIELD = 16,
+	STAFF = 17,
+	SWORD = 18,
+	WAND = 19,
+	FLASK = 20,
+	JEWEL = 21,
+}
+
+-- Reverse map: ItemBaseType enum value -> display name
+local ITEM_BASE_TYPE_TO_NAME = {
+	[ItemBaseType.AMULET] = "Amulet",
+	[ItemBaseType.AXE] = "Axe",
+	[ItemBaseType.BELT] = "Belt",
+	[ItemBaseType.BODY_ARMOUR] = "Body Armour",
+	[ItemBaseType.BOOTS] = "Boots",
+	[ItemBaseType.BOW] = "Bow",
+	[ItemBaseType.CLAW] = "Claw",
+	[ItemBaseType.DAGGER] = "Dagger",
+	[ItemBaseType.FISHING_ROD] = "Fishing Rod",
+	[ItemBaseType.GLOVES] = "Gloves",
+	[ItemBaseType.HELMET] = "Helmet",
+	[ItemBaseType.MACE] = "Mace",
+	[ItemBaseType.QUIVER] = "Quiver",
+	[ItemBaseType.RING] = "Ring",
+	[ItemBaseType.SCEPTRE] = "Sceptre",
+	[ItemBaseType.SHIELD] = "Shield",
+	[ItemBaseType.STAFF] = "Staff",
+	[ItemBaseType.SWORD] = "Sword",
+	[ItemBaseType.WAND] = "Wand",
+	[ItemBaseType.FLASK] = "Flask",
+	[ItemBaseType.JEWEL] = "Jewel",
+}
+
+---@enum (key) TierTags
+local TierTags = {
+	NATURAL = 0,
+	DEX_BASE = 1,
+	INT_BASE = 2,
+	STR_BASE = 3,
+	STR_INT_BASE = 4,
+	STR_DEX_BASE = 5,
+	STR_DEX_INT_BASE = 6,
+	DEX_INT_BASE = 7,
+	WARD_BASE = 8,
+	ELEVATED = 9,
+	ESSENCE = 10,
+	ESSENCE_ONLY = 11,
+	DELVE = 12,
+	CRUSADER = 13,
+	ELDER = 14,
+	HUNTER = 15,
+	REDEEMER = 16,
+	SHAPER = 17,
+	WARLORD = 18,
+	RUNE_DAGGER = 19,
+	NON_RUNE_DAGGER = 20,
+	WARSTAFF = 21,
+	NON_WARSTAFF = 22,
+	RAPIER = 23,
+	MINION_RING = 24,
+	MINION_WAND = 25,
+	MINION_SHIELD = 26,
+	ATTACK_WAND = 27, -- todo not using this now
+	ONE_HANDED = 28,
+	TWO_HANDED = 29,
+	FOCUS = 30,
+	NON_FOCUS = 31,
+	UNSET_RING = 32,
+	DEX_SHIELD = 33,
+	STR_SHIELD = 34,
+	STR_DEX_SHIELD = 35,
+	DEX_INT_SHIELD = 36,
+	STR_INT_SHIELD = 37,
+	INFLUENCED = 38
+}
+
+-- todo: str/dex/int, what items have this base, shields and perhaps also boots don't, base armours do...
+local TIER_TAG_TO_NAME_MAP = {
+	[TierTags.NATURAL] = "NATURAL",
+	[TierTags.DEX_BASE] = "DEX",
+	[TierTags.INT_BASE] = "INT",  
+	[TierTags.STR_BASE] = "STR",
+	[TierTags.STR_INT_BASE] = "STR/INT",
+	[TierTags.STR_DEX_BASE] = "STR/DEX",
+	[TierTags.DEX_INT_BASE] = "DEX/INT",
+	[TierTags.STR_DEX_INT_BASE] = "STR/DEX/INT",
+	[TierTags.WARD_BASE] = "WARD",
+	[TierTags.ELEVATED] = "ELEVATED",
+	[TierTags.ESSENCE] = "ESSENCE",
+	[TierTags.ESSENCE_ONLY] = "ESSENCE",
+	[TierTags.DELVE] = "DELVE",
+	[TierTags.CRUSADER] = "CRUSADER",
+	[TierTags.ELDER] = "ELDER",
+	[TierTags.HUNTER] = "HUNTER",
+	[TierTags.REDEEMER] = "REDEEMER",
+	[TierTags.SHAPER] = "SHAPER",
+	[TierTags.WARLORD] = "WARLORD",
+	[TierTags.RUNE_DAGGER] = "RUNE DAGGER",
+	[TierTags.NON_RUNE_DAGGER] = "NON RUNE DAGGER",
+	[TierTags.WARSTAFF] = "WARSTAFF",
+	[TierTags.NON_WARSTAFF] = "NON WARSTAFF",
+	[TierTags.RAPIER] = "RAPIER", 						-- currently all rapier mods are also one handed swords, so the tag will never be actually displayed 
+	[TierTags.MINION_RING] = "BONE RING",
+	[TierTags.MINION_WAND] = "CONWOKING WAND",
+	[TierTags.MINION_SHIELD] = "BONE SPIRIT SHIELD",
+	[TierTags.ATTACK_WAND] = "ATTACK WAND", 			-- currently attack wand tag is not used
+	[TierTags.ONE_HANDED] = "1H ONLY",
+	[TierTags.TWO_HANDED] = "2H ONLY",
+	[TierTags.FOCUS] = "INT",							-- FOCUS tier tag is mapped to INT_BASE tag, so the mapping won't be practically used
+	[TierTags.NON_FOCUS] = "NON INT",					-- NON FOCUS tier tag is mapped to STR, DEX, DEX/INT, STR/DEX, STR/INT tags (as str/dex/int shield base does not exist)
+	[TierTags.UNSET_RING] = "UNSET RING",
+	[TierTags.DEX_SHIELD] = "DEX",						-- SHIELD tags mapped to their base counterparts
+	[TierTags.STR_SHIELD] = "STR",						-- SHIELD tags mapped to their base counterparts
+	[TierTags.STR_DEX_SHIELD] = "STR/DEX",				-- SHIELD tags mapped to their base counterparts
+	[TierTags.STR_INT_SHIELD] = "STR/INT",				-- SHIELD tags mapped to their base counterparts
+	[TierTags.DEX_INT_SHIELD] = "DEX/INT",				-- SHIELD tags mapped to their base counterparts
+}
+
+local function sharedTagLogic(_, _, _, possibleTags, tags)
+	if possibleTags[TierTags.ELEVATED] and possibleTags[TierTags.ELEVATED] == true then
+		table.insert(tags, TierTags.ELEVATED)
+	elseif possibleTags[TierTags.ESSENCE_ONLY] and possibleTags[TierTags.ESSENCE_ONLY] == true then
+		table.insert(tags, TierTags.ESSENCE_ONLY)
+	else
+		table.insert(tags, TierTags.NATURAL)
+	end
+	if possibleTags[TierTags.CRUSADER] and possibleTags[TierTags.CRUSADER] == true then
+		table.insert(tags, TierTags.CRUSADER)
+	elseif possibleTags[TierTags.ELDER] and possibleTags[TierTags.ELDER] == true then
+		table.insert(tags, TierTags.ELDER)
+	elseif possibleTags[TierTags.HUNTER] and possibleTags[TierTags.HUNTER] == true then
+		table.insert(tags, TierTags.HUNTER)
+	elseif possibleTags[TierTags.REDEEMER] and possibleTags[TierTags.REDEEMER] == true then
+		table.insert(tags, TierTags.REDEEMER)
+	elseif possibleTags[TierTags.SHAPER] and possibleTags[TierTags.SHAPER] == true then
+		table.insert(tags, TierTags.SHAPER)
+	elseif possibleTags[TierTags.WARLORD] and possibleTags[TierTags.WARLORD] == true then
+		table.insert(tags, TierTags.WARLORD)
+	end
+end
+
+local function armourTags(weightKeys, weightVals, _, possibleTags, tags, currentWeightKey)
+	sharedTagLogic(weightKeys, weightVals, _, possibleTags, tags)
+
+	for i, weightKey in ipairs(weightKeys) do
+		if weightKey == currentWeightKey and weightVals[i] == 0 then
+			return -- means that the armour item type has weight val = 0, was removed from the dex/int/str base set
+		end
+	end
+	
+	if possibleTags[TierTags.DEX_BASE] and possibleTags[TierTags.DEX_BASE] == true then
+		table.insert(tags, TierTags.DEX_BASE)
+	end
+	if possibleTags[TierTags.INT_BASE] and possibleTags[TierTags.INT_BASE] == true then
+		table.insert(tags, TierTags.INT_BASE)
+	end
+	if possibleTags[TierTags.STR_BASE] and possibleTags[TierTags.STR_BASE] == true then
+		table.insert(tags, TierTags.STR_BASE)
+	end
+	if possibleTags[TierTags.DEX_INT_BASE] and possibleTags[TierTags.DEX_INT_BASE] == true then
+		table.insert(tags, TierTags.DEX_INT_BASE)
+	end
+	if possibleTags[TierTags.STR_DEX_BASE] and possibleTags[TierTags.STR_DEX_BASE] == true then
+		table.insert(tags, TierTags.STR_DEX_BASE)
+	end
+	if possibleTags[TierTags.STR_INT_BASE] and possibleTags[TierTags.STR_INT_BASE] == true then
+		table.insert(tags, TierTags.STR_INT_BASE)
+	end
+	if possibleTags[TierTags.STR_DEX_INT_BASE] and possibleTags[TierTags.STR_DEX_INT_BASE] == true then
+		table.insert(tags, TierTags.STR_DEX_INT_BASE)
+	end
+	if possibleTags[TierTags.WARD_BASE] and possibleTags[TierTags.WARD_BASE] == true then
+		table.insert(tags, TierTags.WARD_BASE)
+	end
+end
+
+local function twoOrOneHandResolver(weightKeys, weightVals, _, possibleTags, tags, oneHandPattern, twoHandPattern)
+	-- first we check, if the item is influenced
+	if (possibleTags[TierTags.INFLUENCED] and possibleTags[TierTags.INFLUENCED] == true) then
+		local one_hand_index
+		local two_hand_index
+		for i, weightKey in ipairs(weightKeys) do
+			if weightKey:match(oneHandPattern) then one_hand_index = i
+			elseif weightKey:match(twoHandPattern) then two_hand_index = i end
+		end
+		-- for elevated mods, the weightVals are always zero, so they are perceived in a way, that it means it can spawn on that variant
+		if(possibleTags[TierTags.ELEVATED] and possibleTags[TierTags.ELEVATED] == true) then
+			if one_hand_index and two_hand_index then
+				return	-- means that the mod can spawn on all weapon variants
+			end
+			if one_hand_index then table.insert(tags, TierTags.ONE_HANDED)
+			elseif two_hand_index then table.insert(tags,TierTags.ONE_HANDED) end
+		else -- for non-elevated mods, we check the vals, here val = 0 is perceived in the same way as "the weightKeys is missing completely"
+			local one_hand_weight
+			local two_hand_weight
+			if one_hand_index then one_hand_weight = weightVals[one_hand_index] end
+			if two_hand_index then two_hand_weight = weightVals[two_hand_index] end
+			if two_hand_weight and two_hand_weight > 0 then
+				if one_hand_weight and one_hand_weight > 0 then
+					return
+				else
+					table.insert(tags, TierTags.TWO_HANDED)
+				end
+			end
+			if one_hand_weight and one_hand_weight > 0 then
+				table.insert(tags, TierTags.ONE_HANDED)
+			end
+		end
+		return
+	end
+	-- other than influence only the one_hand_weapon and two_hand_weapon weightKeys can result in the ONE/TWO_HANDED possibleTags, in negative or positive way, but should not get both at the same time
+	if (possibleTags[TierTags.ONE_HANDED] and possibleTags[TierTags.ONE_HANDED] == true) then table.insert(tags, TierTags.ONE_HANDED)
+	elseif (possibleTags[TierTags.TWO_HANDED] and possibleTags[TierTags.TWO_HANDED] == true) then table.insert(tags, TierTags.TWO_HANDED) end
+end
+
+local ITEM_TYPE_TAG_HANDLERS = {
+	[ItemBaseType.AMULET] = sharedTagLogic,
+	[ItemBaseType.AXE] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		twoOrOneHandResolver(weightKeys, weightVals, itemBaseType, possibleTags, tags, "^axe_", "^2h_axe_")
+	end,
+	[ItemBaseType.BODY_ARMOUR] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		armourTags(weightKeys, weightVals, itemBaseType, possibleTags, tags, "body_armour")
+	end,
+	[ItemBaseType.BOOTS] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		armourTags(weightKeys, weightVals, itemBaseType, possibleTags, tags, "boots")
+	end,
+	[ItemBaseType.GLOVES] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		armourTags(weightKeys, weightVals, itemBaseType, possibleTags, tags, "gloves")
+	end,
+	[ItemBaseType.HELMET] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		armourTags(weightKeys, weightVals, itemBaseType, possibleTags, tags, "helmet")
+	end,
+	[ItemBaseType.BELT] = sharedTagLogic,
+	[ItemBaseType.BOW] = sharedTagLogic,
+	[ItemBaseType.CLAW] = sharedTagLogic,
+	[ItemBaseType.DAGGER] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		-- for DAGGER we check dagger / rune dagger / non rune dagger
+		if (possibleTags[TierTags.INFLUENCED] and possibleTags[TierTags.INFLUENCED] == true) then
+			local dagger_index
+			local rune_dagger_index
+			for i, weightKey in ipairs(weightKeys) do
+				if weightKey:match("^dagger_") then dagger_index = i
+				elseif weightKey:match("^rune_dagger_") then rune_dagger_index = i end
+			end
+			if(possibleTags[TierTags.ELEVATED] and possibleTags[TierTags.ELEVATED] == true) then
+				if dagger_index and rune_dagger_index then
+					return	-- means, that the mod can spawn on all daggers
+				end
+				if dagger_index then table.insert(tags, TierTags.NON_RUNE_DAGGER)
+				elseif rune_dagger_index then table.insert(tags,TierTags.RUNE_DAGGER) end
+			else
+				local dagger_weight
+				local rune_dagger_weight
+				if dagger_index then dagger_weight = weightVals[dagger_index] end
+				if rune_dagger_index then rune_dagger_weight = weightVals[rune_dagger_index] end
+				if rune_dagger_weight and rune_dagger_weight > 0 then
+					if dagger_weight and dagger_weight > 0 then
+						return -- means, that the mod can spawn on all daggers
+					else
+						table.insert(tags, TierTags.RUNE_DAGGER)
+					end
+				end
+				if dagger_weight and dagger_weight > 0 then
+					table.insert(tags, TierTags.NON_RUNE_DAGGER)
+				end
+			end
+			return
+		end
+		-- other than influence we work with attack_dagger and dagger_weight key
+		local dagger_index
+		for i, weightKey in ipairs(weightKeys) do
+			if weightKey:match("^dagger") then dagger_index = i end
+		end
+		local dagger_weight
+		if dagger_index then dagger_weight = weightVals[dagger_index] end
+		if dagger_weight and dagger_weight > 0 then	-- weightKeys contain dagger with positive weight
+			if possibleTags[TierTags.RUNE_DAGGER] and possibleTags[TierTags.RUNE_DAGGER] == true then table.insert(tags, TierTags.RUNE_DAGGER) end -- weightKeys contain attack_dagger with weight == 0
+			-- otherwise weightKeys either contain attack_dagger with non zero value or don't contain it at all, in both cases mod can spawn on all daggers
+		else -- weightKeys either don't contain dagger weightKey or its value is zero
+			if possibleTags[TierTags.NON_RUNE_DAGGER] and possibleTags[TierTags.NON_RUNE_DAGGER] == true then table.insert(tags, TierTags.NON_RUNE_DAGGER) end -- weightKeys contain attack_dagger with weight > 1
+			-- otherwise neither attack_dagger or dagger weightKeys are present, in which case there was something like one_hand_weapon or weapon weight key and mod can spawn on all daggers
+			-- the use-case when both attack_dagger and dagger weightKeys are present but have 0 values, would result in mod cannot be on dagger at all -> we would not get here in the first place
+		end
+	end, 
+	[ItemBaseType.FISHING_ROD] = sharedTagLogic,
+	[ItemBaseType.MACE] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		twoOrOneHandResolver(weightKeys, weightVals, itemBaseType, possibleTags, tags, "^mace_", "^2h_mace_")
+	end,
+	[ItemBaseType.QUIVER] = sharedTagLogic,
+	[ItemBaseType.RING] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		-- both variants only on mods, which cannot otherwise spawn on ring -> currently no checking regarding that, could change in the future, but I doubt it
+		if possibleTags[TierTags.UNSET_RING] and possibleTags[TierTags.UNSET_RING] == true then table.insert(tags, TierTags.UNSET_RING) end
+		if possibleTags[TierTags.MINION_RING] and possibleTags[TierTags.MINION_RING] == true then table.insert(tags, TierTags.MINION_RING) end
+	end,
+	[ItemBaseType.SCEPTRE] = sharedTagLogic,
+	[ItemBaseType.SHIELD] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		
+		local shieldRemoved = false
+		for i, weightKey in ipairs(weightKeys) do
+			if weightKey == "shield" and weightVals[i] == 0 then
+				shieldRemoved = true
+			end
+		end
+		
+		if (possibleTags[TierTags.DEX_BASE] and possibleTags[TierTags.DEX_BASE] == true and not shieldRemoved) or
+			(possibleTags[TierTags.DEX_SHIELD] and possibleTags[TierTags.DEX_SHIELD] == true) then
+			table.insert(tags, TierTags.DEX_BASE)
+		end
+		if (possibleTags[TierTags.INT_BASE] and possibleTags[TierTags.INT_BASE] == true and not shieldRemoved) or
+			(possibleTags[TierTags.FOCUS] and possibleTags[TierTags.FOCUS] == true) then
+			table.insert(tags, TierTags.INT_BASE)
+		end
+		if (possibleTags[TierTags.STR_BASE] and possibleTags[TierTags.STR_BASE] == true and not shieldRemoved) or
+			(possibleTags[TierTags.STR_SHIELD] and possibleTags[TierTags.STR_SHIELD] == true) then
+			table.insert(tags, TierTags.STR_BASE)
+		end
+		if (possibleTags[TierTags.DEX_INT_BASE] and possibleTags[TierTags.DEX_INT_BASE] == true and not shieldRemoved) or
+			(possibleTags[TierTags.DEX_INT_SHIELD] and possibleTags[TierTags.DEX_INT_SHIELD] == true) then
+			table.insert(tags, TierTags.DEX_INT_BASE)
+		end
+		if (possibleTags[TierTags.STR_DEX_BASE] and possibleTags[TierTags.STR_DEX_BASE] == true and not shieldRemoved) or
+			(possibleTags[TierTags.STR_DEX_SHIELD] and possibleTags[TierTags.STR_DEX_SHIELD] == true) then
+			table.insert(tags, TierTags.STR_DEX_BASE)
+		end
+		if (possibleTags[TierTags.STR_INT_BASE] and possibleTags[TierTags.STR_INT_BASE] == true and not shieldRemoved) or
+			(possibleTags[TierTags.STR_INT_SHIELD] and possibleTags[TierTags.STR_INT_SHIELD] == true) then
+			table.insert(tags, TierTags.STR_INT_BASE)
+		end
+		if possibleTags[TierTags.NON_FOCUS] and possibleTags[TierTags.NON_FOCUS] == true then
+			table.insert(tags, TierTags.DEX_BASE)
+			table.insert(tags, TierTags.STR_BASE)
+			table.insert(tags, TierTags.STR_DEX_BASE)
+			table.insert(tags, TierTags.DEX_INT_BASE)
+			table.insert(tags, TierTags.STR_INT_BASE)
+		end
+		if possibleTags[TierTags.MINION_SHIELD] and possibleTags[TierTags.MINION_SHIELD] == true then
+			table.insert(tags, TierTags.MINION_SHIELD)
+		end
+	end,
+	[ItemBaseType.STAFF] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		-- for STAVES we check warstaff / staff
+		if (possibleTags[TierTags.INFLUENCED] and possibleTags[TierTags.INFLUENCED] == true) then
+			local staff_index
+			local warstaff_index
+			local attack_staff_index
+			for i, weightKey in ipairs(weightKeys) do
+				if weightKey:match("^staff_") then staff_index = i
+				elseif weightKey:match("^warstaff_") then warstaff_index = i
+				elseif weightKey:match("^attack_staff") then attack_staff_index = i end
+			end
+			if(possibleTags[TierTags.ELEVATED] and possibleTags[TierTags.ELEVATED] == true) then
+				if staff_index and warstaff_index then
+					return	-- means, that the mod can spawn on all staves
+				end
+				if staff_index then table.insert(tags, TierTags.NON_WARSTAFF)
+				elseif warstaff_index then table.insert(tags,TierTags.WARSTAFF) end
+			else
+				local staff_weight
+				local warstaff_weight
+				local attack_staff_weight
+				if staff_index then staff_weight = weightVals[staff_index] end
+				if warstaff_index then warstaff_weight = weightVals[warstaff_index] end
+				if attack_staff_index then warstaff_weight = weightVals[warstaff_index] end
+				if warstaff_weight and warstaff_weight > 0 then
+					if staff_weight and staff_weight > 0 then
+						if attack_staff_weight and attack_staff_weight == 0 then
+							table.insert(tags, TierTags.NON_WARSTAFF)
+						end
+						-- else mod can spawn on all staves
+					end
+					table.insert(tags, TierTags.WARSTAFF)
+				else
+					if staff_weight and staff_weight > 0 then
+						table.insert(tags, TierTags.NON_WARSTAFF)
+					end
+				end
+			end
+			return
+		end
+		-- other than influence we work with attack_dagger and dagger_weight key
+		local staff_index
+		for i, weightKey in ipairs(weightKeys) do
+			if weightKey:match("^staff") then staff_index = i end
+		end
+		local staff_weight
+		if staff_index then staff_weight = weightVals[staff_index] end
+		if staff_weight and staff_weight > 0 then	-- weightKeys contain staff with positive weight
+			if possibleTags[TierTags.NON_WARSTAFF] and possibleTags[TierTags.NON_WARSTAFF] == true then table.insert(tags, TierTags.NON_WARSTAFF) end -- weightKeys contain warstaff or attack_staff with weight == 0
+			-- otherwise weightKeys either contain warstaff or attack_staff with non zero value or don't contain them at all, in both cases mod can spawn on all staves
+		else -- weightKeys either don't contain staff weightKey or its value is zero
+			if possibleTags[TierTags.WARSTAFF] and possibleTags[TierTags.WARSTAFF] == true then table.insert(tags, TierTags.WARSTAFF) end -- weightKeys contain warstaff or attack_staff with weight > 1
+			-- otherwise neither warstaff, attack_staff or staff weightKeys are present, in which case there was something like one_hand_weapon or weapon weight key and mod can spawn on all staves
+			-- currently not caring about the situation when there is both attack_staff and warstaff in the weightKeys (especially if one val > 0, second == 0), as the situation is not present in the data
+		end
+	end,
+	[ItemBaseType.SWORD] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		-- rapier weightKey is currently only in 31 mods, always positive weightVal, always sword has also positive val and two_hand_weapon has 0 value, the weightKey has no influence versions
+		-- will view as subset of 1h sword
+		twoOrOneHandResolver(weightKeys, weightVals, itemBaseType, possibleTags, tags, "^sword_", "^2h_sword_")
+		
+	end,
+	[ItemBaseType.WAND] = function(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		sharedTagLogic(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+		-- only on mods, which cannot otherwise spawn on wand -> currently no checking regarding that, could change in the future, but I doubt it
+		if possibleTags[TierTags.MINION_WAND] and possibleTags[TierTags.MINION_WAND] == true then table.insert(tags, TierTags.MINION_WAND) end
+	end,
+}
+
+local WEIGHT_KEY_INFO = {
+	-- SETS
+	["default"] = {priority = 1,
+				   adds = {ItemBaseType.AMULET, ItemBaseType.AXE, ItemBaseType.BELT, ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.BOW, ItemBaseType.CLAW,
+						   ItemBaseType.DAGGER, ItemBaseType.FISHING_ROD, ItemBaseType.FLASK, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.JEWEL, ItemBaseType.MACE,
+						   ItemBaseType.QUIVER, ItemBaseType.RING, ItemBaseType.SCEPTRE, ItemBaseType.SHIELD, ItemBaseType.STAFF, ItemBaseType.SWORD, ItemBaseType.WAND},
+				   removes = {}, tagsPositive = {}, tagsNegative = {}},
+	["armour"] = {priority = 2,
+				  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
+				  removes = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
+				  tagsPositive = {}, tagsNegative = {}},
+	["weapon"] = {priority = 2,
+				  adds = {ItemBaseType.AXE, ItemBaseType.BOW, ItemBaseType.CLAW, ItemBaseType.DAGGER, ItemBaseType.MACE, ItemBaseType.SCEPTRE, ItemBaseType.STAFF, ItemBaseType.SWORD, ItemBaseType.WAND},
+				  removes = {ItemBaseType.AXE, ItemBaseType.BOW, ItemBaseType.CLAW, ItemBaseType.DAGGER, ItemBaseType.MACE, ItemBaseType.SCEPTRE, ItemBaseType.STAFF, ItemBaseType.SWORD, ItemBaseType.WAND},
+				  tagsPositive = {}, tagsNegative = {}},
+	["one_hand_weapon"] = {priority = 3,
+						   adds = {ItemBaseType.AXE, ItemBaseType.CLAW, ItemBaseType.DAGGER, ItemBaseType.MACE, ItemBaseType.SCEPTRE, ItemBaseType.SWORD, ItemBaseType.WAND},
+						   removes = {ItemBaseType.CLAW, ItemBaseType.DAGGER, ItemBaseType.SCEPTRE, ItemBaseType.WAND},
+						   tagsPositive = {TierTags.ONE_HANDED}, tagsNegative = {TierTags.TWO_HANDED}},
+	["two_hand_weapon"] = {priority = 3,
+						   adds = {ItemBaseType.AXE, ItemBaseType.BOW, ItemBaseType.MACE, ItemBaseType.STAFF, ItemBaseType.SWORD},
+						   removes = {ItemBaseType.BOW, ItemBaseType.STAFF},
+						   tagsPositive = {TierTags.TWO_HANDED}, tagsNegative = {TierTags.ONE_HANDED}},
+	["ranged"] = {priority = 4,
+				  adds = {ItemBaseType.BOW, ItemBaseType.WAND},
+				  removes = {ItemBaseType.BOW, ItemBaseType.WAND}, tagsPositive = {}, tagsNegative = {}},
+	-- Accessories
+	["amulet"] = {priority = 3,
+				  adds = {ItemBaseType.AMULET},
+				  removes = {ItemBaseType.AMULET}, tagsPositive = {}, tagsNegative = {}},
+	["belt"] = {priority = 3,
+				adds = {ItemBaseType.BELT},
+				removes = {ItemBaseType.BELT}, tagsPositive = {}, tagsNegative = {}},
+	["ring"] = {priority = 3, 
+				adds = {ItemBaseType.RING},
+				removes = {ItemBaseType.RING}, tagsPositive = {}, tagsNegative = {}},
+	-- Armour slots
+	["body_armour"] = {priority = 3,
+					   adds = {ItemBaseType.BODY_ARMOUR},
+					   removes = {ItemBaseType.BODY_ARMOUR}, tagsPositive = {}, tagsNegative = {}},
+	["boots"] = {priority = 3,
+				 adds = {ItemBaseType.BOOTS},
+				 removes = {ItemBaseType.BOOTS}, tagsPositive = {}, tagsNegative = {}},
+	["gloves"] = {priority = 3,
+				  adds = {ItemBaseType.GLOVES},
+				  removes = {ItemBaseType.GLOVES}, tagsPositive = {}, tagsNegative = {}},
+	["helmet"] = {priority = 3, adds = {ItemBaseType.HELMET},
+				  removes = {ItemBaseType.HELMET}, tagsPositive = {}, tagsNegative = {}},
+	-- Attribute-based armour (applies to all 4 armor slots)
+	["dex_armour"] = {priority = 4,
+					  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
+					  removes = {}, tagsPositive = {TierTags.DEX_BASE}, tagsNegative = {}},
+	["int_armour"] = {priority = 4,
+					  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
+					  removes = {}, tagsPositive = {TierTags.INT_BASE}, tagsNegative = {}},
+	["str_armour"] = {priority = 4,
+					  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
+					  removes = {}, tagsPositive = {TierTags.STR_BASE}, tagsNegative = {}},
+	["dex_int_armour"] = {priority = 4,
+						  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
+						  removes = {}, tagsPositive = {TierTags.DEX_INT_BASE}, tagsNegative = {}},
+	["str_dex_armour"] = {priority = 4,
+						  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
+						  removes = {}, tagsPositive = {TierTags.STR_DEX_BASE}, tagsNegative = {}},
+	["str_int_armour"] = {priority = 4,
+						  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
+						  removes = {}, tagsPositive = {TierTags.STR_INT_BASE}, tagsNegative = {}},
+	["str_dex_int_armour"] = {priority = 4,
+							  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET}, -- there is no str/dex/int shield base
+							  removes = {}, tagsPositive = {TierTags.STR_DEX_INT_BASE}, tagsNegative = {}},
+	["ward_armour"] = {priority = 4,
+					   adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET},
+					   removes = {}, tagsPositive = {TierTags.WARD_BASE}, tagsNegative = {}},
+	["dex_shield"] = {priority = 6,	-- all shield attribute specific bases are subset of all shield bases, that is why we give priority = 6 = lower than shield
+					  adds = {ItemBaseType.SHIELD},
+					  removes = {}, tagsPositive = {TierTags.DEX_SHIELD}, tagsNegative = {}},
+	["str_shield"] = {priority = 6,
+					  adds = {ItemBaseType.SHIELD},
+					  removes = {}, tagsPositive = {TierTags.STR_SHIELD}, tagsNegative = {}},
+	["dex_int_shield"] = {priority = 6,
+						  adds = {ItemBaseType.SHIELD},
+						  removes = {}, tagsPositive = {TierTags.DEX_INT_BASE}, tagsNegative = {}},
+	["str_dex_shield"] = {priority = 6,
+						  adds = {ItemBaseType.SHIELD},
+						  removes = {}, tagsPositive = {TierTags.STR_DEX_BASE}, tagsNegative = {}},
+	["str_int_shield"] = {priority = 6,
+						  adds = {ItemBaseType.SHIELD},
+						  removes = {}, tagsPositive = {TierTags.STR_INT_BASE}, tagsNegative = {}},
+	-- Weapons - with one and two handed variants
+	["axe"] = {priority = 5, adds = {ItemBaseType.AXE}, removes = {ItemBaseType.AXE}, tagsPositive = {}, tagsNegative = {}},
+	["mace"] = {priority = 5, adds = {ItemBaseType.MACE}, removes = {ItemBaseType.MACE}, tagsPositive = {}, tagsNegative = {}},
+	["sword"] = {priority = 5, adds = {ItemBaseType.SWORD}, removes = {ItemBaseType.SWORD}, tagsPositive = {}, tagsNegative = {}},
+	-- Weapons - one handed
+	["claw"] = {priority = 5, adds = {ItemBaseType.CLAW}, removes = {ItemBaseType.CLAW}, tagsPositive = {}, tagsNegative = {}},
+	["dagger"] = {priority = 5, adds = {ItemBaseType.DAGGER}, removes = {ItemBaseType.DAGGER}, tagsPositive = {}, tagsNegative = {}},
+	["sceptre"] = {priority = 5, adds = {ItemBaseType.SCEPTRE}, removes = {ItemBaseType.SCEPTRE}, tagsPositive = {}, tagsNegative = {}},
+	["wand"] = {priority = 5, adds = {ItemBaseType.WAND}, removes = {ItemBaseType.WAND}, tagsPositive = {}, tagsNegative = {}},
+	-- Weapons - two handed
+	["bow"] = {priority = 5, adds = {ItemBaseType.BOW}, removes = {ItemBaseType.BOW}, tagsPositive = {}, tagsNegative = {}},
+	["staff"] = {priority = 5, adds = {ItemBaseType.STAFF}, removes = {ItemBaseType.STAFF}, tagsPositive = {}, tagsNegative = {}},
+	-- Other
+	["fishing_rod"] = {priority = 3, adds = {ItemBaseType.FISHING_ROD}, removes = {ItemBaseType.FISHING_ROD}, tagsPositive = {}, tagsNegative = {}},
+	["quiver"] = {priority = 3, adds = {ItemBaseType.QUIVER}, removes = {ItemBaseType.QUIVER}, tagsPositive = {}, tagsNegative = {}},
+	["shield"] = {priority = 3, adds = {ItemBaseType.SHIELD}, removes = {ItemBaseType.SHIELD}, tagsPositive = {}, tagsNegative = {}},
+	-- Item variant keys
+	["rapier"] = {priority = 6, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.RAPIER}, tagsNegative = {}},
+	["attack_dagger"] = {priority = 6, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.NON_RUNE_DAGGER}, tagsNegative = {TierTags.RUNE_DAGGER}},
+	["warstaff"] = {priority = 6, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.WARSTAFF}, tagsNegative = {TierTags.NON_WARSTAFF}},
+	["attack_staff"] = {priority = 6, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.WARSTAFF}, tagsNegative = {TierTags.NON_WARSTAFF}},
+	["focus"] = {priority = 6, adds = {ItemBaseType.SHIELD}, removes = {}, tagsPositive = {TierTags.FOCUS}, tagsNegative = {TierTags.NON_FOCUS}},
+	["focus_can_roll_minion_modifiers"] = {priority = 7, adds = {ItemBaseType.SHIELD}, removes = {}, tagsPositive = {TierTags.MINION_SHIELD}, tagsNegative = {}},
+	["weapon_can_roll_minion_modifiers"] = {priority = 7, adds = {ItemBaseType.WAND}, removes = {}, tagsPositive = {TierTags.MINION_WAND}, tagsNegative = {}},
+	["ring_can_roll_minion_modifiers"] = {priority = 7, adds = {ItemBaseType.RING}, removes = {}, tagsPositive = {TierTags.MINION_RING}, tagsNegative = {}},
+	["unset_ring"] = {priority = 7, adds = {ItemBaseType.RING}, removes = {}, tagsPositive = {TierTags.UNSET_RING}, tagsNegative = {}},
+	-- Influence-specific armour
+	["body_armour_adjudicator"] = {priority = 8, adds = {ItemBaseType.BODY_ARMOUR}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["body_armour_basilisk"] = {priority = 8, adds = {ItemBaseType.BODY_ARMOUR}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["body_armour_crusader"] = {priority = 8, adds = {ItemBaseType.BODY_ARMOUR}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["body_armour_elder"] = {priority = 8, adds = {ItemBaseType.BODY_ARMOUR}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["body_armour_eyrie"] = {priority = 8, adds = {ItemBaseType.BODY_ARMOUR}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["body_armour_shaper"] = {priority = 8, adds = {ItemBaseType.BODY_ARMOUR}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	["boots_adjudicator"] = {priority = 8, adds = {ItemBaseType.BOOTS}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["boots_basilisk"] = {priority = 8, adds = {ItemBaseType.BOOTS}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["boots_crusader"] = {priority = 8, adds = {ItemBaseType.BOOTS}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["boots_elder"] = {priority = 8, adds = {ItemBaseType.BOOTS}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["boots_eyrie"] = {priority = 8, adds = {ItemBaseType.BOOTS}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["boots_shaper"] = {priority = 8, adds = {ItemBaseType.BOOTS}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	["helmet_adjudicator"] = {priority = 8, adds = {ItemBaseType.HELMET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["helmet_basilisk"] = {priority = 8, adds = {ItemBaseType.HELMET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["helmet_crusader"] = {priority = 8, adds = {ItemBaseType.HELMET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["helmet_elder"] = {priority = 8, adds = {ItemBaseType.HELMET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["helmet_eyrie"] = {priority = 8, adds = {ItemBaseType.HELMET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["helmet_shaper"] = {priority = 8, adds = {ItemBaseType.HELMET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	["gloves_adjudicator"] = {priority = 8, adds = {ItemBaseType.GLOVES}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["gloves_basilisk"] = {priority = 8, adds = {ItemBaseType.GLOVES}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["gloves_crusader"] = {priority = 8, adds = {ItemBaseType.GLOVES}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["gloves_elder"] = {priority = 8, adds = {ItemBaseType.GLOVES}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["gloves_eyrie"] = {priority = 8, adds = {ItemBaseType.GLOVES}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["gloves_shaper"] = {priority = 8, adds = {ItemBaseType.GLOVES}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	-- Influence-specific jewellery
+	["amulet_adjudicator"] = {priority = 8, adds = {ItemBaseType.AMULET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["amulet_basilisk"] = {priority = 8, adds = {ItemBaseType.AMULET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["amulet_crusader"] = {priority = 8, adds = {ItemBaseType.AMULET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["amulet_elder"] = {priority = 8, adds = {ItemBaseType.AMULET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["amulet_eyrie"] = {priority = 8, adds = {ItemBaseType.AMULET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["amulet_shaper"] = {priority = 8, adds = {ItemBaseType.AMULET}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	["belt_adjudicator"] = {priority = 8, adds = {ItemBaseType.BELT}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["belt_basilisk"] = {priority = 8, adds = {ItemBaseType.BELT}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["belt_crusader"] = {priority = 8, adds = {ItemBaseType.BELT}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["belt_elder"] = {priority = 8, adds = {ItemBaseType.BELT}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["belt_eyrie"] = {priority = 8, adds = {ItemBaseType.BELT}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["belt_shaper"] = {priority = 8, adds = {ItemBaseType.BELT}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	["ring_adjudicator"] = {priority = 8, adds = {ItemBaseType.RING}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["ring_basilisk"] = {priority = 8, adds = {ItemBaseType.RING}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["ring_crusader"] = {priority = 8, adds = {ItemBaseType.RING}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["ring_elder"] = {priority = 8, adds = {ItemBaseType.RING}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["ring_eyrie"] = {priority = 8, adds = {ItemBaseType.RING}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["ring_shaper"] = {priority = 8, adds = {ItemBaseType.RING}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	-- Influenced offhands
+	["quiver_adjudicator"] = {priority = 8, adds = {ItemBaseType.QUIVER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["quiver_basilisk"] = {priority = 8, adds = {ItemBaseType.QUIVER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["quiver_crusader"] = {priority = 8, adds = {ItemBaseType.QUIVER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["quiver_elder"] = {priority = 8, adds = {ItemBaseType.QUIVER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["quiver_eyrie"] = {priority = 8, adds = {ItemBaseType.QUIVER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["quiver_shaper"] = {priority = 8, adds = {ItemBaseType.QUIVER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	["shield_adjudicator"] = {priority = 8, adds = {ItemBaseType.SHIELD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["shield_basilisk"] = {priority = 8, adds = {ItemBaseType.SHIELD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["shield_crusader"] = {priority = 8, adds = {ItemBaseType.SHIELD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["shield_elder"] = {priority = 8, adds = {ItemBaseType.SHIELD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["shield_eyrie"] = {priority = 8, adds = {ItemBaseType.SHIELD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["shield_shaper"] = {priority = 8, adds = {ItemBaseType.SHIELD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	-- Influenced weapons
+	["axe_adjudicator"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["axe_basilisk"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["axe_crusader"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["axe_elder"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["axe_eyrie"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["axe_shaper"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["2h_axe_adjudicator"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_axe_basilisk"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_axe_crusader"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_axe_elder"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_axe_eyrie"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_axe_shaper"] = {priority = 8, adds = {ItemBaseType.AXE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["bow_adjudicator"] = {priority = 8, adds = {ItemBaseType.BOW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["bow_basilisk"] = {priority = 8, adds = {ItemBaseType.BOW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["bow_crusader"] = {priority = 8, adds = {ItemBaseType.BOW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["bow_elder"] = {priority = 8, adds = {ItemBaseType.BOW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["bow_eyrie"] = {priority = 8, adds = {ItemBaseType.BOW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["bow_shaper"] = {priority = 8, adds = {ItemBaseType.BOW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	["claw_adjudicator"] = {priority = 8, adds = {ItemBaseType.CLAW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["claw_basilisk"] = {priority = 8, adds = {ItemBaseType.CLAW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["claw_crusader"] = {priority = 8, adds = {ItemBaseType.CLAW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["claw_elder"] = {priority = 8, adds = {ItemBaseType.CLAW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["claw_eyrie"] = {priority = 8, adds = {ItemBaseType.CLAW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["claw_shaper"] = {priority = 8, adds = {ItemBaseType.CLAW}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	["dagger_adjudicator"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.NON_RUNE_DAGGER}, tagsNegative = {}},
+	["dagger_basilisk"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.NON_RUNE_DAGGER}, tagsNegative = {}},
+	["dagger_crusader"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.NON_RUNE_DAGGER}, tagsNegative = {}},
+	["dagger_elder"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.NON_RUNE_DAGGER}, tagsNegative = {}},
+	["dagger_eyrie"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.NON_RUNE_DAGGER}, tagsNegative = {}},
+	["dagger_shaper"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.NON_RUNE_DAGGER}, tagsNegative = {}},
+	["rune_dagger_adjudicator"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.RUNE_DAGGER}, tagsNegative = {}},
+	["rune_dagger_basilisk"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.RUNE_DAGGER}, tagsNegative = {}},
+	["rune_dagger_crusader"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.RUNE_DAGGER}, tagsNegative = {}},
+	["rune_dagger_elder"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.RUNE_DAGGER}, tagsNegative = {}},
+	["rune_dagger_eyrie"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.RUNE_DAGGER}, tagsNegative = {}},
+	["rune_dagger_shaper"] = {priority = 8, adds = {ItemBaseType.DAGGER}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.RUNE_DAGGER}, tagsNegative = {}},
+	["mace_adjudicator"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["mace_basilisk"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["mace_crusader"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["mace_elder"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["mace_eyrie"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["mace_shaper"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["2h_mace_adjudicator"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_mace_basilisk"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_mace_crusader"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_mace_elder"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_mace_eyrie"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_mace_shaper"] = {priority = 8, adds = {ItemBaseType.MACE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["sceptre_adjudicator"] = {priority = 8, adds = {ItemBaseType.SCEPTRE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["sceptre_basilisk"] = {priority = 8, adds = {ItemBaseType.SCEPTRE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["sceptre_crusader"] = {priority = 8, adds = {ItemBaseType.SCEPTRE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["sceptre_elder"] = {priority = 8, adds = {ItemBaseType.SCEPTRE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["sceptre_eyrie"] = {priority = 8, adds = {ItemBaseType.SCEPTRE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["sceptre_shaper"] = {priority = 8, adds = {ItemBaseType.SCEPTRE}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	["staff_adjudicator"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.NON_WARSTAFF}, tagsNegative = {}},
+	["staff_basilisk"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.NON_WARSTAFF}, tagsNegative = {}},
+	["staff_crusader"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.NON_WARSTAFF}, tagsNegative = {}},
+	["staff_elder"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.NON_WARSTAFF}, tagsNegative = {}},
+	["staff_eyrie"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.NON_WARSTAFF}, tagsNegative = {}},
+	["staff_shaper"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.NON_WARSTAFF}, tagsNegative = {}},
+	["sword_adjudicator"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["sword_basilisk"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["sword_crusader"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["sword_elder"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["sword_eyrie"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["sword_shaper"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.ONE_HANDED}, tagsNegative = {}},
+	["2h_sword_adjudicator"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_sword_basilisk"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_sword_crusader"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_sword_elder"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_sword_eyrie"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["2h_sword_shaper"] = {priority = 8, adds = {ItemBaseType.SWORD}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.TWO_HANDED}, tagsNegative = {}},
+	["warstaff_adjudicator"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD, TierTags.WARSTAFF}, tagsNegative = {}},
+	["warstaff_basilisk"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER, TierTags.WARSTAFF}, tagsNegative = {}},
+	["warstaff_crusader"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER, TierTags.WARSTAFF}, tagsNegative = {}},
+	["warstaff_elder"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER, TierTags.WARSTAFF}, tagsNegative = {}},
+	["warstaff_eyrie"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER, TierTags.WARSTAFF}, tagsNegative = {}},
+	["warstaff_shaper"] = {priority = 8, adds = {ItemBaseType.STAFF}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER, TierTags.WARSTAFF}, tagsNegative = {}},
+	["wand_adjudicator"] = {priority = 8, adds = {ItemBaseType.WAND}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.WARLORD}, tagsNegative = {}},
+	["wand_basilisk"] = {priority = 8, adds = {ItemBaseType.WAND}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.HUNTER}, tagsNegative = {}},
+	["wand_crusader"] = {priority = 8, adds = {ItemBaseType.WAND}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.CRUSADER}, tagsNegative = {}},
+	["wand_elder"] = {priority = 8, adds = {ItemBaseType.WAND}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.ELDER}, tagsNegative = {}},
+	["wand_eyrie"] = {priority = 8, adds = {ItemBaseType.WAND}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.REDEEMER}, tagsNegative = {}},
+	["wand_shaper"] = {priority = 8, adds = {ItemBaseType.WAND}, removes = {}, tagsPositive = {TierTags.INFLUENCED, TierTags.SHAPER}, tagsNegative = {}},
+	-- unsupported weight tags
+	["deepwater_sword"] = {priority = 999, adds = {}, removes = {}, tagsPositive = {}, tagsNegative = {}},
+	["grants_2h_support"] = {priority = 999, adds = {}, removes = {}, tagsPositive = {}, tagsNegative = {}},
+	["grants_crit_chance_support"] = {priority = 999, adds = {}, removes = {}, tagsPositive = {}, tagsNegative = {}}
+}
+
+
+-- LOGIC CLASSES ========================================================================================================================================================================================================
+-- TIER class
+local TierClass = newClass("Tier")
+
+-- Tier class constructor
+function TierClass:Tier(tierId, affix, effect, levelReq, spawnsOnItems, tags)
+	self.tierId = tierId				-- "LocalAddedColdDamage6"
+	self.affix = affix					-- "Frozen"
+	self.effect = effect				-- "Adds (31-42) to (62-71) Cold Damage"
+	self.levelReq = levelReq			-- 43
+	self.spawnsOnItems = spawnsOnItems	-- { ItemBaseType }
+	self.tags = tags					-- [ItemBaseType] -> { TierTags }
+	return self
+end
+
+-- MOD class
+local ModClass = newClass("Mod")
+
+-- constructor
+function ModClass:Mod(modKey, type, group, affectsItems, tiers)
+	self.modKey = modKey				-- "LocalAddedColdDamage"
+	self.type = type					-- "Prefix"/"Suffix"/"Implicit"
+	self.group = group					-- "LocalColdDamage"
+	self.affectsItems = affectsItems	-- {"Helmet", "Gloves", "Amulet"}
+	self.tierCount = 1
+	self.tiers = tiers
+	return self
+end
+
+-- we have: possibleTags is TierTags -> boolean
+-- we want: ItemBaseType -> {TierTags} for each tier...
+-- itemBaseTypes is ItemBaseType -> boolean (sparse table keyed by enum)
+function ModClass.processPossibleTags(weightKeys, weightVals, itemBaseTypes, possibleTags)
+	local typeTagMap = {}
+	for itemBaseType, canSpawn in pairs(itemBaseTypes) do
+		local tags = {}
+		if canSpawn == true then
+			local handler = ITEM_TYPE_TAG_HANDLERS[itemBaseType]
+			if handler then
+				handler(weightKeys, weightVals, itemBaseType, possibleTags, tags)
+			end
+		end
+
+		typeTagMap[itemBaseType] = tags
+	end
+	return typeTagMap
+end
+
+function ModClass.addTier(self, newTier)
+	table.insert(self.tiers, newTier)
+end
+
+-- Return only tiers that can spawn on the given ItemBaseType
+function ModClass:getTiersForItemType(itemBaseType)
+	local filtered = {}
+	for _, tier in ipairs(self.tiers) do
+		if tier.spawnsOnItems[itemBaseType] == true then
+			table.insert(filtered, tier)
+		end
+	end
+	return filtered
+end
+
+-- Check if this mod has any elevated tiers
+function ModClass:isElevatedMod()
+	for _, tier in ipairs(self.tiers) do
+		if tier.tags then
+			for itemBaseType, tagList in pairs(tier.tags) do
+				for _, tag in ipairs(tagList) do
+					if tag == TierTags.ELEVATED then
+						return true
+					end
+				end
+			end
+		end
+	end
+	return false
+end
+
+-- Check if this mod has any essence-only tiers
+function ModClass:isEssenceOnlyMod()
+	for _, tier in ipairs(self.tiers) do
+		if tier.tags then
+			for itemBaseType, tagList in pairs(tier.tags) do
+				for _, tag in ipairs(tagList) do
+					if tag == TierTags.ESSENCE_ONLY then
+						return true
+					end
+				end
+			end
+		end
+	end
+	return false
+end
+
+-- Return structured display data for a mod filtered to a specific item type
+-- Returns: { modKey, type, group, tierCount, tiers: { { tierId, affix, levelReq, effect, tagNames } } }
+function ModClass:display(itemBaseType)
+	local tiers = self:getTiersForItemType(itemBaseType)
+	if #tiers == 0 then
+		return nil
+	end
+	
+	local displayTiers = {}
+	for _, tier in ipairs(tiers) do
+		local tagNames = tier:displayTags(itemBaseType)
+		table.insert(displayTiers, {
+			tierId = tier.tierId,
+			affix = tier.affix,
+			levelReq = tier.levelReq,
+			effect = tier.effect,
+			tagNames = tagNames,
+		})
+	end
+	
+	return {
+		modKey = self.modKey,
+		type = self.type,
+		group = self.group,
+		tierCount = #tiers,
+		tiers = displayTiers,
+		isElevated = self:isElevatedMod(),
+		isEssenceOnly = self:isEssenceOnlyMod(),
+	}
+end
+
+-- Tier display methods
+
+-- Return human-readable tag names for this tier on a specific item type
+function TierClass:displayTags(itemBaseType)
+	local tagNames = {}
+	local tags = self.tags[itemBaseType]
+	if tags then
+		for _, tag in ipairs(tags) do
+			local name = TIER_TAG_TO_NAME_MAP[tag]
+			if name then
+				table.insert(tagNames, name)
+			end
+		end
+	end
+	return tagNames
+end
+
+-- MOD/TIER construction ===========================================================================================
+
+--[[Derive a merge key from a mod ID by stripping trailing underscores and digits, examples:
+    "Intelligence10" -> "Intelligence", "MaximumLifeUber2" -> "MaximumLifeUber",
+    "PercentageIntelligenceInfluence1_" -> "PercentageIntelligenceInfluence",
+    "IntelligenceEssence7" -> "IntelligenceEssence"]]
+function ModClass.getModKey(modId)
+	-- Strip trailing underscores and digits
+	return modId:gsub("[_%d]+_$", ""):gsub("[_%d]+$", "")
+end
+
+function ModClass.isElevated(mod)
+	if not mod.affix then
+		return false
+	end
+	if mod.affix:match("^Elevated") then return true end
+	if mod.affix:match("^of the Essence") then return true end
+	if mod.affix:match("^of Elevated") then return true end
+	return false
+end
+
+function ModClass.isEssenceOnly(mod)
+	if not mod.affix then
+		return false
+	end
+	if mod.affix:match("^Essences") then return true end
+	if mod.affix:match("^of the Elevated") then return true end
+	if mod.affix:match("^of Elevated") then return true end
+	return false
+end
+
+local function dropsOnSomeItem(spawnsOnItems)
+	for _, dropBool in pairs(spawnsOnItems) do
+		if dropBool == true then
+			return true
+		end
+	end
+	return false
+end
+
+function ModClass.fromExplicitData(tierId, modKey, dataMod, existingMod)
+	if ModClass.isElevated(dataMod) then
+		local spawnsOnItems, possibleTags = ModClass.getTierItemsElevated(dataMod.weightKey, dataMod.weightVal)
+		if dropsOnSomeItem(spawnsOnItems) then
+			local itemTagMap = ModClass.processPossibleTags(dataMod.weightKey, dataMod.weightVal, spawnsOnItems, possibleTags)
+			local parsedTier = new("Tier"):Tier(tierId, dataMod.affix or "", dataMod[1] or "", dataMod.level or 0, spawnsOnItems, itemTagMap)
+ 		if existingMod then
+ 			existingMod:addTier(parsedTier)
+ 			return nil
+ 		end
+ 		return new("Mod"):Mod(modKey, dataMod.type or "N/A", dataMod.group or "", spawnsOnItems, {parsedTier})
+ 		end
+ 		return nil
+ 	end
+ 	if ModClass.isEssenceOnly(dataMod) then
+		-- todo: plan is, to get the items on which the mod can occur from Essence.lua file "here", then we will know, what are the item bases for the mod
+	    -- todo: then later, we will have to go over the essence file (the essences with type value matching the one in supportedStatsList) and add the info, that the mod can be
+		-- todo: also the tag thingies
+	end
+
+	local spawnsOnItems, possibleTags = ModClass.getTierItems(dataMod.weightKey, dataMod.weightVal)
+	if dropsOnSomeItem(spawnsOnItems) then
+		local itemTagMap = ModClass.processPossibleTags(dataMod.weightKey, dataMod.weightVal, spawnsOnItems, possibleTags)
+		local parsedTier = new("Tier"):Tier(tierId, dataMod.affix or "", dataMod[1] or "", dataMod.level or 0, spawnsOnItems, itemTagMap)
+		if existingMod then
+			existingMod:addTier(parsedTier)
+			return nil
+		end
+		return new("Mod"):Mod(modKey, dataMod.type or "N/A", dataMod.group or "", spawnsOnItems, {parsedTier})	
+	end
+	return nil
+end
+
+function ModClass.getTierItems(weightKeys, weightVals)
+	local weightKeyValPairs = {}
+	for i, key in ipairs(weightKeys) do
+		table.insert(weightKeyValPairs, {key = key, val = weightVals[i]})
+	end
+
+	table.sort(weightKeyValPairs, function(a,b)
+		local aPriority = WEIGHT_KEY_INFO[a.key].priority or 999
+		local bPriority = WEIGHT_KEY_INFO[b.key].priority or 999
+		return aPriority < bPriority
+	end)
+
+	local itemBaseTypes = {} -- ItemBaseType -> boolean
+	local possibleTags = {} -- TierTags -> boolean
+	for _, keyValPair in ipairs(weightKeyValPairs) do
+		if keyValPair.val > 0 then
+			for _, itemType in ipairs(WEIGHT_KEY_INFO[keyValPair.key].adds) do
+				itemBaseTypes[itemType] = true
+			end
+			for _, tag in ipairs(WEIGHT_KEY_INFO[keyValPair.key].tagsPositive) do
+				possibleTags[tag] = true
+			end
+		else
+			for _, itemType in ipairs(WEIGHT_KEY_INFO[keyValPair.key].removes) do
+				itemBaseTypes[itemType] = false
+			end
+			for _, tag in ipairs(WEIGHT_KEY_INFO[keyValPair.key].tagsNegative) do
+				possibleTags[tag] = true
+			end
+		end
+	end
+	return itemBaseTypes, possibleTags
+end
+
+function ModClass.getTierItemsElevated(weightKeys, weightVals)
+	local weightKeyValPairs = {}
+	for i, key in ipairs(weightKeys) do
+		table.insert(weightKeyValPairs, {key = key, val = weightVals[i]})
+	end
+	
+	local itemBaseTypes = {} -- ItemBaseType -> boolean
+	local possibleTags = {} -- TierTags -> boolean
+	
+	possibleTags[TierTags.ELEVATED] = true
+
+	-- first we add all item types with false value
+	for _, itemType in ipairs(WEIGHT_KEY_INFO["default"].adds) do
+		itemBaseTypes[itemType] = false
+	end
+	
+	for _, keyValPair in ipairs(weightKeyValPairs) do
+		if keyValPair.key ~= "default" then
+			for _, itemType in ipairs(WEIGHT_KEY_INFO[keyValPair.key].adds) do
+				itemBaseTypes[itemType] = true
+			end
+			for _, tag in ipairs(WEIGHT_KEY_INFO[keyValPair.key].tagsPositive) do
+				possibleTags[tag] = true
+			end
+		end
+	end
+	return itemBaseTypes, possibleTags
+end
+
+
+
+--[[
+-- Sort tiers within each group by level requirement
+for _, merged in ipairs(order) do
+local entry = groups[merged]
+table.sort(entry.tiers, function(a, b)
+return a.level < b.level
+end)
+end
+
+-- Build final ordered list
+local mergedList = {}
+for _, mergeKey in ipairs(order) do
+table.insert(mergedList, groups[mergeKey])
+end
+
+return mergedList
+end]]
+
 -- Layout constants (shared across Draw, DrawConfig, DrawItems, DrawCalcs, etc.)=========================================================================================================================================
 
 local LAYOUT = {
@@ -290,210 +1288,6 @@ local supportedStatsList = {
 	},
 }
 
--- Unified mapping from weightKey strings to both filter properties and display item types.
--- weightKey in files like ModExplicit contains array of "item types" like helmet or ring_crusader, then there is array called weightVal which contains the info about weight of the specific mod on that "item type"
--- This is mapping from the weightKey to :
---   filter: name of search filter, which affects the given "item type" (if searchHelmetMods filter is false, we don't care about "helmet" or "helmet_crusader"...)
---   types: an array of display item type names (e.g., {"Ring"})
--- *Note: Attribute-based armor keys (str_armour, dex_armour, etc.) apply to all four armor slots (body armour, helmet, gloves, boots), not just body armour.
-local WEIGHT_KEY_INFO = {
-	-- Accessories
-	["amulet"] = {filter = "searchAmuletMods", types = {"Amulet"}},
-	["belt"] = {filter = "searchBeltMods", types = {"Belt"}},
-	["ring"] = {filter = "searchRingMods", types = {"Ring"}},
-	-- Armour slots
-	["body_armour"] = {filter = "searchBodyArmourMods", types = {"Body Armour"}},
-	["boots"] = {filter = "searchBootsMods", types = {"Boots"}},
-	["gloves"] = {filter = "searchGlovesMods", types = {"Gloves"}},
-	["helmet"] = {filter = "searchHelmetMods", types = {"Helmet"}},
-	-- Attribute-based armour (applies to all 4 armor slots)
-	["dex_armour"] = {filter = {"searchBodyArmourMods", "searchHelmetMods", "searchGlovesMods", "searchBootsMods"}, types = {"Body Armour", "Helmet", "Gloves", "Boots"}},
-	["int_armour"] = {filter = {"searchBodyArmourMods", "searchHelmetMods", "searchGlovesMods", "searchBootsMods"}, types = {"Body Armour", "Helmet", "Gloves", "Boots"}},
-	["str_armour"] = {filter = {"searchBodyArmourMods", "searchHelmetMods", "searchGlovesMods", "searchBootsMods"}, types = {"Body Armour", "Helmet", "Gloves", "Boots"}},
-	["dex_int_armour"] = {filter = {"searchBodyArmourMods", "searchHelmetMods", "searchGlovesMods", "searchBootsMods"}, types = {"Body Armour", "Helmet", "Gloves", "Boots"}},
-	["str_dex_armour"] = {filter = {"searchBodyArmourMods", "searchHelmetMods", "searchGlovesMods", "searchBootsMods"}, types = {"Body Armour", "Helmet", "Gloves", "Boots"}},
-	["str_int_armour"] = {filter = {"searchBodyArmourMods", "searchHelmetMods", "searchGlovesMods", "searchBootsMods"}, types = {"Body Armour", "Helmet", "Gloves", "Boots"}},
-	["str_dex_int_armour"] = {filter = {"searchBodyArmourMods", "searchHelmetMods", "searchGlovesMods", "searchBootsMods"}, types = {"Body Armour", "Helmet", "Gloves", "Boots"}},
-	["ward_armour"] = {filter = {"searchBodyArmourMods", "searchHelmetMods", "searchGlovesMods", "searchBootsMods"}, types = {"Body Armour", "Helmet", "Gloves", "Boots"}},
-	-- Influence-specific armour
-	["body_armour_adjudicator"] = {filter = "searchBodyArmourMods", types = {"Body Armour"}},
-	["body_armour_basilisk"] = {filter = "searchBodyArmourMods", types = {"Body Armour"}},
-	["body_armour_crusader"] = {filter = "searchBodyArmourMods", types = {"Body Armour"}},
-	["body_armour_elder"] = {filter = "searchBodyArmourMods", types = {"Body Armour"}},
-	["body_armour_eyrie"] = {filter = "searchBodyArmourMods", types = {"Body Armour"}},
-	["body_armour_shaper"] = {filter = "searchBodyArmourMods", types = {"Body Armour"}},
-	["helmet_adjudicator"] = {filter = "searchHelmetMods", types = {"Helmet"}},
-	["helmet_basilisk"] = {filter = "searchHelmetMods", types = {"Helmet"}},
-	["helmet_crusader"] = {filter = "searchHelmetMods", types = {"Helmet"}},
-	["helmet_elder"] = {filter = "searchHelmetMods", types = {"Helmet"}},
-	["helmet_eyrie"] = {filter = "searchHelmetMods", types = {"Helmet"}},
-	["helmet_shaper"] = {filter = "searchHelmetMods", types = {"Helmet"}},
-	["boots_adjudicator"] = {filter = "searchBootsMods", types = {"Boots"}},
-	["boots_basilisk"] = {filter = "searchBootsMods", types = {"Boots"}},
-	["boots_crusader"] = {filter = "searchBootsMods", types = {"Boots"}},
-	["boots_elder"] = {filter = "searchBootsMods", types = {"Boots"}},
-	["boots_eyrie"] = {filter = "searchBootsMods", types = {"Boots"}},
-	["boots_shaper"] = {filter = "searchBootsMods", types = {"Boots"}},
-	["gloves_adjudicator"] = {filter = "searchGlovesMods", types = {"Gloves"}},
-	["gloves_basilisk"] = {filter = "searchGlovesMods", types = {"Gloves"}},
-	["gloves_crusader"] = {filter = "searchGlovesMods", types = {"Gloves"}},
-	["gloves_elder"] = {filter = "searchGlovesMods", types = {"Gloves"}},
-	["gloves_eyrie"] = {filter = "searchGlovesMods", types = {"Gloves"}},
-	["gloves_shaper"] = {filter = "searchGlovesMods", types = {"Gloves"}},
-	-- Influence-specific accessories
-	["belt_adjudicator"] = {filter = "searchBeltMods", types = {"Belt"}},
-	["belt_basilisk"] = {filter = "searchBeltMods", types = {"Belt"}},
-	["belt_crusader"] = {filter = "searchBeltMods", types = {"Belt"}},
-	["belt_elder"] = {filter = "searchBeltMods", types = {"Belt"}},
-	["belt_eyrie"] = {filter = "searchBeltMods", types = {"Belt"}},
-	["belt_shaper"] = {filter = "searchBeltMods", types = {"Belt"}},
-	["shield_adjudicator"] = {filter = "searchShieldMods", types = {"Shield"}},
-	["shield_basilisk"] = {filter = "searchShieldMods", types = {"Shield"}},
-	["shield_crusader"] = {filter = "searchShieldMods", types = {"Shield"}},
-	["shield_elder"] = {filter = "searchShieldMods", types = {"Shield"}},
-	["shield_eyrie"] = {filter = "searchShieldMods", types = {"Shield"}},
-	["shield_shaper"] = {filter = "searchShieldMods", types = {"Shield"}},
-	["ring_adjudicator"] = {filter = "searchRingMods", types = {"Ring"}},
-	["ring_basilisk"] = {filter = "searchRingMods", types = {"Ring"}},
-	["ring_crusader"] = {filter = "searchRingMods", types = {"Ring"}},
-	["ring_elder"] = {filter = "searchRingMods", types = {"Ring"}},
-	["ring_eyrie"] = {filter = "searchRingMods", types = {"Ring"}},
-	["ring_shaper"] = {filter = "searchRingMods", types = {"Ring"}},
-	["amulet_adjudicator"] = {filter = "searchAmuletMods", types = {"Amulet"}},
-	["amulet_basilisk"] = {filter = "searchAmuletMods", types = {"Amulet"}},
-	["amulet_crusader"] = {filter = "searchAmuletMods", types = {"Amulet"}},
-	["amulet_elder"] = {filter = "searchAmuletMods", types = {"Amulet"}},
-	["amulet_eyrie"] = {filter = "searchAmuletMods", types = {"Amulet"}},
-	["amulet_shaper"] = {filter = "searchAmuletMods", types = {"Amulet"}},
-	["quiver_adjudicator"] = {filter = "searchQuiverMods", types = {"Quiver"}},
-	["quiver_basilisk"] = {filter = "searchQuiverMods", types = {"Quiver"}},
-	["quiver_crusader"] = {filter = "searchQuiverMods", types = {"Quiver"}},
-	["quiver_elder"] = {filter = "searchQuiverMods", types = {"Quiver"}},
-	["quiver_eyrie"] = {filter = "searchQuiverMods", types = {"Quiver"}},
-	["quiver_shaper"] = {filter = "searchQuiverMods", types = {"Quiver"}},
-	-- Weapons - one handed
-	["axe"] = {filter = "searchAxeMods", types = {"Axe (1H)", "Axe (2H)"}},
-	["claw"] = {filter = "searchClawMods", types = {"Claw"}},
-	["dagger"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["mace"] = {filter = "searchMaceMods", types = {"Mace (1H)", "Mace (2H)"}},
-	["rapier"] = {filter = "searchSwordMods", types = {"Rapier"}},
-	["sceptre"] = {filter = "searchSwordMods", types = {"Sceptre"}},
-	["sword"] = {filter = "searchSwordMods", types = {"Sword (1H)", "Sword (2H)"}},
-	["wand"] = {filter = "searchWandMods", types = {"Wand"}},
-	-- Weapons - two handed
-	["bow"] = {filter = "searchBowMods", types = {"Bow"}},
-	["staff"] = {filter = "searchStaffMods", types = {"Staff"}},
-	-- Influence-specific weapons
-	["axe_adjudicator"] = {filter = "searchAxeMods", types = {"Axe (1H)"}},
-	["axe_basilisk"] = {filter = "searchAxeMods", types = {"Axe (1H)"}},
-	["axe_crusader"] = {filter = "searchAxeMods", types = {"Axe (1H)"}},
-	["axe_elder"] = {filter = "searchAxeMods", types = {"Axe (1H)"}},
-	["axe_eyrie"] = {filter = "searchAxeMods", types = {"Axe (1H)"}},
-	["axe_shaper"] = {filter = "searchAxeMods", types = {"Axe (1H)"}},
-	["2h_axe_adjudicator"] = {filter = "searchAxeMods", types = {"Axe (2H)"}},
-	["2h_axe_basilisk"] = {filter = "searchAxeMods", types = {"Axe (2H)"}},
-	["2h_axe_crusader"] = {filter = "searchAxeMods", types = {"Axe (2H)"}},
-	["2h_axe_elder"] = {filter = "searchAxeMods", types = {"Axe (2H)"}},
-	["2h_axe_eyrie"] = {filter = "searchAxeMods", types = {"Axe (2H)"}},
-	["2h_axe_shaper"] = {filter = "searchAxeMods", types = {"Axe (2H)"}},
-	["bow_adjudicator"] = {filter = "searchBowMods", types = {"Bow"}},
-	["bow_basilisk"] = {filter = "searchBowMods", types = {"Bow"}},
-	["bow_crusader"] = {filter = "searchBowMods", types = {"Bow"}},
-	["bow_elder"] = {filter = "searchBowMods", types = {"Bow"}},
-	["bow_eyrie"] = {filter = "searchBowMods", types = {"Bow"}},
-	["bow_shaper"] = {filter = "searchBowMods", types = {"Bow"}},
-	["claw_adjudicator"] = {filter = "searchClawMods", types = {"Claw"}},
-	["claw_basilisk"] = {filter = "searchClawMods", types = {"Claw"}},
-	["claw_crusader"] = {filter = "searchClawMods", types = {"Claw"}},
-	["claw_elder"] = {filter = "searchClawMods", types = {"Claw"}},
-	["claw_eyrie"] = {filter = "searchClawMods", types = {"Claw"}},
-	["claw_shaper"] = {filter = "searchClawMods", types = {"Claw"}},
-	["dagger_adjudicator"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["dagger_basilisk"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["dagger_crusader"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["dagger_elder"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["dagger_eyrie"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["dagger_shaper"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["rune_dagger_adjudicator"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["rune_dagger_basilisk"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["rune_dagger_crusader"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["rune_dagger_elder"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["rune_dagger_eyrie"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["rune_dagger_shaper"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["mace_adjudicator"] = {filter = "searchMaceMods", types = {"Mace (1H)"}},
-	["mace_basilisk"] = {filter = "searchMaceMods", types = {"Mace (1H)"}},
-	["mace_crusader"] = {filter = "searchMaceMods", types = {"Mace (1H)"}},
-	["mace_elder"] = {filter = "searchMaceMods", types = {"Mace (1H)"}},
-	["mace_eyrie"] = {filter = "searchMaceMods", types = {"Mace (1H)"}},
-	["mace_shaper"] = {filter = "searchMaceMods", types = {"Mace (1H)"}},
-	["2h_mace_adjudicator"] = {filter = "searchMaceMods", types = {"Mace (2H)"}},
-	["2h_mace_basilisk"] = {filter = "searchMaceMods", types = {"Mace (2H)"}},
-	["2h_mace_crusader"] = {filter = "searchMaceMods", types = {"Mace (2H)"}},
-	["2h_mace_elder"] = {filter = "searchMaceMods", types = {"Mace (2H)"}},
-	["2h_mace_eyrie"] = {filter = "searchMaceMods", types = {"Mace (2H)"}},
-	["2h_mace_shaper"] = {filter = "searchMaceMods", types = {"Mace (2H)"}},
-	["sceptre_adjudicator"] = {filter = "searchSwordMods", types = {"Sceptre"}},
-	["sceptre_basilisk"] = {filter = "searchSwordMods", types = {"Sceptre"}},
-	["sceptre_crusader"] = {filter = "searchSwordMods", types = {"Sceptre"}},
-	["sceptre_elder"] = {filter = "searchSwordMods", types = {"Sceptre"}},
-	["sceptre_eyrie"] = {filter = "searchSwordMods", types = {"Sceptre"}},
-	["sceptre_shaper"] = {filter = "searchSwordMods", types = {"Sceptre"}},
-	["staff_adjudicator"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["staff_basilisk"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["staff_crusader"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["staff_elder"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["staff_eyrie"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["staff_shaper"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["sword_adjudicator"] = {filter = "searchSwordMods", types = {"Sword (1H)"}},
-	["sword_basilisk"] = {filter = "searchSwordMods", types = {"Sword (1H)"}},
-	["sword_crusader"] = {filter = "searchSwordMods", types = {"Sword (1H)"}},
-	["sword_elder"] = {filter = "searchSwordMods", types = {"Sword (1H)"}},
-	["sword_eyrie"] = {filter = "searchSwordMods", types = {"Sword (1H)"}},
-	["sword_shaper"] = {filter = "searchSwordMods", types = {"Sword (1H)"}},
-	["2h_sword_adjudicator"] = {filter = "searchSwordMods", types = {"Sword (2H)"}},
-	["2h_sword_basilisk"] = {filter = "searchSwordMods", types = {"Sword (2H)"}},
-	["2h_sword_crusader"] = {filter = "searchSwordMods", types = {"Sword (2H)"}},
-	["2h_sword_elder"] = {filter = "searchSwordMods", types = {"Sword (2H)"}},
-	["2h_sword_eyrie"] = {filter = "searchSwordMods", types = {"Sword (2H)"}},
-	["2h_sword_shaper"] = {filter = "searchSwordMods", types = {"Sword (2H)"}},
-	["warstaff_adjudicator"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["warstaff_basilisk"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["warstaff_crusader"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["warstaff_elder"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["warstaff_eyrie"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["warstaff_shaper"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["wand_adjudicator"] = {filter = "searchWandMods", types = {"Wand"}},
-	["wand_basilisk"] = {filter = "searchWandMods", types = {"Wand"}},
-	["wand_crusader"] = {filter = "searchWandMods", types = {"Wand"}},
-	["wand_elder"] = {filter = "searchWandMods", types = {"Wand"}},
-	["wand_eyrie"] = {filter = "searchWandMods", types = {"Wand"}},
-	["wand_shaper"] = {filter = "searchWandMods", types = {"Wand"}},
-	-- Generic weapon keys
-	["one_hand_weapon"] = {filter = "searchSwordMods", types = {"Sword (1H)", "Axe (1H)", "Mace (1H)", "Wand", "Sceptre", "Claw", "Dagger", "Rapier"}},
-	["two_hand_weapon"] = {filter = "searchSwordMods", types = {"Sword (2H)", "Axe (2H)", "Mace (2H)", "Staff", "Bow"}},
-	["weapon"] = {filter = "searchSwordMods", types = {"Sword (1H)", "Sword (2H)", "Axe (1H)", "Axe (2H)", "Mace (1H)", "Mace (2H)", "Wand", "Sceptre", "Claw", "Dagger", "Rapier", "Staff", "Bow"}},
-	-- Other
-	["fishing_rod"] = {filter = "searchFishingMods", types = {"Fishing Rod"}},
-	["flask"] = {filter = "searchFlaskMods", types = {"Flask"}},
-	["jewel"] = {filter = "searchJewelMods", types = {"Jewel"}},
-	["quiver"] = {filter = "searchQuiverMods", types = {"Quiver"}},
-	["shield"] = {filter = "searchShieldMods", types = {"Shield"}},
-	-- Item variant keys (these add a tag, not a separate item type)
-	["attack_dagger"] = {filter = "searchDaggerMods", types = {"Dagger"}},
-	["warstaff"] = {filter = "searchStaffMods", types = {"Staff"}},
-	["weapon_can_roll_minion_modifiers"] = {filter = "searchWandMods", types = {"Wand"}},
-	["wand_can_roll_caster_modifiers"] = {filter = "searchWandMods", types = {"Wand"}},
-}
-
--- Item type variant tags: weightKey -> display tag name
--- These are shown as tags on tiers when the mod has variant-specific behavior
-local WEIGHT_KEY_VARIANT_TAGS = {
-	["attack_dagger"] = "Dagger",
-	["dagger"] = "Runic Dagger",
-	["warstaff"] = "Warstaff",
-	["weapon_can_roll_minion_modifiers"] = "Minion Wand",
-	["weapon_can_roll_caster_modifiers"] = "Cast Wand",
-}
 
 -- Item type hierarchy structure.
 -- Defines the tree: Items -> (Armour, Weapons, Accessories, Other) -> leaf types.
@@ -507,49 +1301,43 @@ local ITEM_TYPE_HIERARCHY = {
 				name = "Armour",
 				expandedByDefault = true,
 				children = {
-					{name = "Body Armour", keys = {"Body Armour"}},
-					{name = "Helmet", keys = {"Helmet"}},
-					{name = "Gloves", keys = {"Gloves"}},
-					{name = "Boots", keys = {"Boots"}},
+					{name = "Body Armour", keys = {ItemBaseType.BODY_ARMOUR}},
+					{name = "Helmet", keys = {ItemBaseType.HELMET}},
+					{name = "Gloves", keys = {ItemBaseType.GLOVES}},
+					{name = "Boots", keys = {ItemBaseType.BOOTS}},
 				},
 			},
 			{
 				name = "Weapons",
 				expandedByDefault = true,
 				children = {
-					{name = "Sword (1H)", keys = {"Sword (1H)"}},
-					{name = "Sword (2H)", keys = {"Sword (2H)"}},
-					{name = "Axe (1H)", keys = {"Axe (1H)"}},
-					{name = "Axe (2H)", keys = {"Axe (2H)"}},
-					{name = "Mace (1H)", keys = {"Mace (1H)"}},
-					{name = "Mace (2H)", keys = {"Mace (2H)"}},
-					{name = "Wand", keys = {"Wand"}},
-					{name = "Sceptre", keys = {"Sceptre"}},
-					{name = "Claw", keys = {"Claw"}},
-					{name = "Dagger", keys = {"Dagger"}},
-					{name = "Rapier", keys = {"Rapier"}},
-					{name = "Staff", keys = {"Staff"}},
-					{name = "Bow", keys = {"Bow"}},
+					{name = "Sword", keys = {ItemBaseType.SWORD}},
+					{name = "Axe", keys = {ItemBaseType.AXE}},
+					{name = "Mace", keys = {ItemBaseType.MACE}},
+					{name = "Wand", keys = {ItemBaseType.WAND}},
+					{name = "Sceptre", keys = {ItemBaseType.SCEPTRE}},
+					{name = "Claw", keys = {ItemBaseType.CLAW}},
+					{name = "Dagger", keys = {ItemBaseType.DAGGER}},
+					{name = "Staff", keys = {ItemBaseType.STAFF}},
+					{name = "Bow", keys = {ItemBaseType.BOW}},
 				},
 			},
 			{
 				name = "Accessories",
 				expandedByDefault = true,
 				children = {
-					{name = "Ring", keys = {"Ring"}},
-					{name = "Amulet", keys = {"Amulet"}},
-					{name = "Belt", keys = {"Belt"}},
+					{name = "Ring", keys = {ItemBaseType.RING}},
+					{name = "Amulet", keys = {ItemBaseType.AMULET}},
+					{name = "Belt", keys = {ItemBaseType.BELT}},
 				},
 			},
 			{
 				name = "Other",
 				expandedByDefault = true,
 				children = {
-					{name = "Shield", keys = {"Shield"}},
-					{name = "Quiver", keys = {"Quiver"}},
-					{name = "Jewel", keys = {"Jewel"}},
-					{name = "Flask", keys = {"Flask"}},
-					{name = "Fishing Rod", keys = {"Fishing Rod"}},
+					{name = "Shield", keys = {ItemBaseType.SHIELD}},
+					{name = "Quiver", keys = {ItemBaseType.QUIVER}},
+					{name = "Fishing Rod", keys = {ItemBaseType.FISHING_ROD}},
 				},
 			},
 		},
@@ -630,48 +1418,41 @@ local FILTER_SECTIONS = {
 	},
 }
 
--- Build a reverse lookup: display item type name -> hierarchy path (e.g., "Ring" -> {"Items", "Accessories", "Ring"})
-local ITEM_TYPE_TO_PATH = {}
--- Also build: display item type name -> filter property name (e.g., "Ring" -> "searchRingMods")
-local ITEM_TYPE_TO_FILTER = {}
+-- Build a reverse lookup: ItemBaseType enum -> hierarchy path (e.g., ItemBaseType.RING -> {"Items", "Accessories", "Ring"})
+local ITEM_BASE_TYPE_TO_PATH = {}
+-- Also build: ItemBaseType enum -> filter property name (e.g., ItemBaseType.RING -> "searchRingMods")
+local ITEM_BASE_TYPE_TO_FILTER = {
+	[ItemBaseType.AMULET] = "searchAmuletMods",
+	[ItemBaseType.AXE] = "searchAxeMods",
+	[ItemBaseType.BELT] = "searchBeltMods",
+	[ItemBaseType.BODY_ARMOUR] = "searchBodyArmourMods",
+	[ItemBaseType.BOOTS] = "searchBootsMods",
+	[ItemBaseType.BOW] = "searchBowMods",
+	[ItemBaseType.CLAW] = "searchClawMods",
+	[ItemBaseType.DAGGER] = "searchDaggerMods",
+	[ItemBaseType.FISHING_ROD] = "searchFishingMods",
+	[ItemBaseType.FLASK] = "searchFlaskMods",
+	[ItemBaseType.GLOVES] = "searchGlovesMods",
+	[ItemBaseType.HELMET] = "searchHelmetMods",
+	[ItemBaseType.JEWEL] = "searchJewelMods",
+	[ItemBaseType.MACE] = "searchMaceMods",
+	[ItemBaseType.QUIVER] = "searchQuiverMods",
+	[ItemBaseType.RING] = "searchRingMods",
+	[ItemBaseType.SCEPTRE] = "searchSceptreMods",
+	[ItemBaseType.SHIELD] = "searchShieldMods",
+	[ItemBaseType.STAFF] = "searchStaffMods",
+	[ItemBaseType.SWORD] = "searchSwordMods",
+	[ItemBaseType.WAND] = "searchWandMods",
+}
 local function buildItemTypePaths(node, pathPrefix)
 	local path = {}
 	for _, p in ipairs(pathPrefix) do table.insert(path, p) end
 	table.insert(path, node.name)
 
 	if node.keys then
-		-- Leaf node: map display type names to hierarchy path and filter property
-		for _, key in ipairs(node.keys) do
-			ITEM_TYPE_TO_PATH[key] = path
-			-- Derive filter property from display name: "Sword (1H)" -> "searchSwordMods"
-			-- Strip " (1H)" / " (2H)" suffixes, then map to filter property
-			local baseName = key:gsub(" %(%dH%)", "")
-			-- Map common display names to filter properties
-			local filterMap = {
-				["Ring"] = "searchRingMods",
-				["Amulet"] = "searchAmuletMods",
-				["Belt"] = "searchBeltMods",
-				["Body Armour"] = "searchBodyArmourMods",
-				["Helmet"] = "searchHelmetMods",
-				["Gloves"] = "searchGlovesMods",
-				["Boots"] = "searchBootsMods",
-				["Shield"] = "searchShieldMods",
-				["Quiver"] = "searchQuiverMods",
-				["Jewel"] = "searchJewelMods",
-				["Flask"] = "searchFlaskMods",
-				["Fishing Rod"] = "searchFishingMods",
-				["Sword"] = "searchSwordMods",
-				["Axe"] = "searchAxeMods",
-				["Mace"] = "searchMaceMods",
-				["Wand"] = "searchWandMods",
-				["Sceptre"] = "searchSwordMods",
-				["Claw"] = "searchClawMods",
-				["Dagger"] = "searchDaggerMods",
-				["Rapier"] = "searchSwordMods",
-				["Staff"] = "searchStaffMods",
-				["Bow"] = "searchBowMods",
-			}
-			ITEM_TYPE_TO_FILTER[key] = filterMap[baseName] or "searchSwordMods"
+		-- Leaf node: map ItemBaseType enum to hierarchy path
+		for _, itemBaseType in ipairs(node.keys) do
+			ITEM_BASE_TYPE_TO_PATH[itemBaseType] = path
 		end
 	elseif node.children then
 		for _, child in ipairs(node.children) do
@@ -685,9 +1466,9 @@ end
 
 -- Filter related functions  ============================================================================================================================================================================================
 
--- Check if a display item type is currently enabled by the item filter checkboxes
-local function isItemTypeEnabled(itemType, self)
-	local filterProp = ITEM_TYPE_TO_FILTER[itemType]
+-- Check if an ItemBaseType is currently enabled by the item filter checkboxes
+local function isItemTypeEnabled(itemBaseType, self)
+	local filterProp = ITEM_BASE_TYPE_TO_FILTER[itemBaseType]
 	if not filterProp then
 		return true -- unknown type, show by default
 	end
@@ -707,8 +1488,12 @@ end
 
 -- Check if a mod's weightKey matches any enabled item filter
 local function modMatchesItemFilters(mod, self)
+	if not anyItemFilterEnabled(self) then
+		-- No filters enabled: include all mods
+		return true
+	end
 	if not mod.weightKey then
-		return anyItemFilterEnabled(self)
+		return false
 	end
 	for _, key in ipairs(mod.weightKey) do
 		if key == "default" then
@@ -740,47 +1525,6 @@ end
 
 -- Mod search related functions  ========================================================================================================================================================================================
 
--- Check if a mod can spawn naturally
-local function isNaturalMod(mod)
-	if not mod.weightKey or not mod.weightVal then
-		return true
-	end
-	-- Check if any weightKey has a non-zero weight (excluding "default")
-	for i, key in ipairs(mod.weightKey) do
-		if key ~= "default" and mod.weightVal[i] and mod.weightVal[i] > 0 then
-			return true
-		end
-	end
-	return false
-end
-
--- Get the influence type from weightKey
-local function getInfluenceType(mod)
-	if not mod.weightKey then
-		return nil
-	end
-	for _, key in ipairs(mod.weightKey) do
-		if key:match("_shaper$") then return "Shaper" end
-		if key:match("_elder$") then return "Elder" end
-		if key:match("_crusader$") then return "Crusader" end
-		if key:match("_eyrie$") then return "Redeemer" end
-		if key:match("_adjudicator$") then return "Warlord" end
-		if key:match("_basilisk$") then return "Hunter" end
-	end
-	return nil
-end
-
-
-local function isElevated(mod)
-	if not mod.affix then
-		return false
-	end
-	if mod.affix:match("^Elevated") then return true end
-	if mod.affix:match("^of the Elevated") then return true end
-	if mod.affix:match("^of Elevated") then return true end
-	return false
-end
-
 -- Search ModExplicit for mods matching the given group names and filters
 local function searchModsInExplicit(groupNames, self)
 	-- In ModExplicit.lua, the table structure is:
@@ -800,54 +1544,27 @@ local function searchModsInExplicit(groupNames, self)
 			goto continue
 		end
 		
-		-- Apply item type filters
-		if not modMatchesItemFilters(mod, self) then
-			goto continue
-		end
-		
-		-- Apply mod source filters
-		local natural = isNaturalMod(mod)
-		local essence = false -- todo: when searching through the essence lua 
+		-- todo: do we want to apply the filters before we process the mod? perhaps makes it faster, but there would be double logic no, like if it can spawn on the item
 		-- TODO: if we want to add influence filter, or/and elevated filter
-		local influenceType = getInfluenceType(mod)
-		local elevated = isElevated(mod)
+		-- Apply item type filters
+		--if not modMatchesItemFilters(mod, self) then
+		--	goto continue
+		--end
 		
-		-- A mod passes if:
-		-- - It's a natural mod AND searchBase is enabled
-		-- - OR it's an essence-only mod AND searchEssence is enabled
-		local passesSourceFilter = false
-		if natural and self.searchBase then
-			passesSourceFilter = true
+		local modKey = ModClass.getModKey(modId)
+		local existingMod = results[modKey]
+		if existingMod then
+			-- todo: we already parsed mod from this group ... do we want to count them?
+			ModClass.fromExplicitData(modId, modKey, mod, existingMod)
+		else
+			local modParent = ModClass.fromExplicitData(modId, modKey, mod, existingMod)
+			if modParent then
+				results[modKey] = modParent
+			end
 		end
-		if essence and self.searchEssence then
-			passesSourceFilter = true
-		end
-		if elevated then
-			passesSourceFilter = true
-		end
-		if not passesSourceFilter then
-			goto continue
-		end
-		
-		-- Store mod info
-		local statText = mod[1] or ""
-		table.insert(results, {
-			id = modId,
-			type = mod.type or "N/A",
-			affix = mod.affix or "",
-			statText = statText,
-			group = mod.group,
-			level = mod.level or 0,
-			weightKey = mod.weightKey,
-			weightVal = mod.weightVal,
-			modTags = mod.modTags,
-			natural = natural,
-			influenceType = influenceType,
-			isElevated = elevated,
-			tradeHashes = mod.tradeHashes,
-		})
-		
-		::continue::
+		-- todo: do we want some natural tag or something like that?
+		-- todo: do we want to somehow sort the tiers
+ 	::continue::
 	end
 	
 	return results
@@ -885,74 +1602,6 @@ end
 
 -- Displaying results related functions  ================================================================================================================================================================================
 
--- Derive a merge key from a mod ID by stripping trailing underscores and digits
--- Examples: "Intelligence10" -> "Intelligence", "MaximumLifeUber2" -> "MaximumLifeUber",
---           "PercentageIntelligenceInfluence1_" -> "PercentageIntelligenceInfluence",
---           "IntelligenceEssence7" -> "IntelligenceEssence"
-local function getMergeKey(modId)
-	-- Strip trailing underscores and digits
-	return modId:gsub("[_%d]+_$", ""):gsub("[_%d]+$", "")
-end
-
--- Merge search results by merge key (mod ID with trailing digits/underscores stripped)
--- Groups tiers of the same mod (e.g., Intelligence1-10) into collapsible entries
-local function mergeResults(results)
-	-- First pass: group by merge key
-	local groups = {} -- mergeKey -> { mergedEntry }
-	local order = {}  -- preserve insertion order of merge keys
-	
-	for _, result in ipairs(results) do
-		local mergeKey = getMergeKey(result.id)
-		
-		if not groups[mergeKey] then
-			-- Create new merged entry from the first result
-			local merged = {
-				mergeKey = mergeKey,
-				type = result.type,
-				group = result.group,
-				influenceType = result.influenceType,
-				isElevated = result.isElevated,
-				natural = result.natural,
-				tiers = {},
-			}
-			groups[mergeKey] = merged
-			table.insert(order, mergeKey)
-		end
-		
-		-- Add this result as a tier
-		local tier = {
-			id = result.id,
-			affix = result.affix,
-			statText = result.statText,
-			level = result.level,
-			weightKey = result.weightKey,
-			weightVal = result.weightVal,
-			modTags = result.modTags,
-			natural = result.natural,
-			influenceType = result.influenceType,
-			isElevated = result.isElevated,
-			tradeHashes = result.tradeHashes,
-		}
-		table.insert(groups[mergeKey].tiers, tier)
-	end
-	
-	-- Sort tiers within each group by level requirement
-	for _, merged in ipairs(order) do
-		local entry = groups[merged]
-		table.sort(entry.tiers, function(a, b)
-			return a.level < b.level
-		end)
-	end
-	
-	-- Build final ordered list
-	local mergedList = {}
-	for _, mergeKey in ipairs(order) do
-		table.insert(mergedList, groups[mergeKey])
-	end
-	
-	return mergedList
-end
-
 -- Class related code ===================================================================================================================================================================================================
 
 ---@class StatFinderTab: ControlHost, Control
@@ -969,10 +1618,9 @@ function StatFinderTabClass:StatFinderTab(build)
 	self.itemsTotalContentHeight = 0
 	self.skillsTotalContentHeight = 0
 
-	-- Selected stat category index (1 = "Select a stat...")
+	-- Selected stat category index (1 = "Select a stat...")false
 	self.selectedStatIndex = 1
 	self.searchResults = {}
-	self.mergedResults = {}
 	self.groupedResults = {} -- grouped by item type hierarchy
 	self.expandedGroups = {} -- mergeKey -> boolean (expanded/collapsed state)
 	self.expandedSections = {} -- section path (e.g., "Items|Armour") -> boolean
@@ -1188,163 +1836,24 @@ local function CreateFilterSection(host, anchorTarget, anchorPoint, targetAnchor
 	return section, checkboxes
 end
 
--- Expand a mod's weightKey list to a set of display item type names
-local function expandWeightKeysToItemTypes(mod)
-	local itemTypeSet = {}
-	if not mod.weightKey then
-		return itemTypeSet
-	end
-	-- Check if this is a Maven/Elevated mod (weightVal is all zeros but still has meaningful weightKeys)
-	-- These mods can't spawn naturally but should still show their item type
-	local isMavenMod = mod.isElevated or false
-	for i, key in ipairs(mod.weightKey) do
-		if key == "default" then
-			goto continue
-		end
-		-- Skip if weightVal is 0 for this key (mod cannot spawn on this item type)
-		-- Exception: Maven/Elevated mods have weightVal = {0} but still have valid item types
-		if not isMavenMod and mod.weightVal and mod.weightVal[i] and mod.weightVal[i] == 0 then
-			goto continue
-		end
-		local info = WEIGHT_KEY_INFO[key]
-		if info and info.types then
-			for _, t in ipairs(info.types) do
-				itemTypeSet[t] = true
-			end
-		end
-		::continue::
-	end
-	return itemTypeSet
-end
+-- (Obsolete functions removed: expandWeightKeysToItemTypes, getVariantTags, getAttributeBaseTags
+--  The OOP approach uses Mod:display(itemBaseType) and Tier:displayTags(itemBaseType) instead.)
 
--- Get variant tags for a mod based on weightKey
-local function getVariantTags(mod)
-	local tags = {}
-	if not mod.weightKey then
-		return tags
-	end
-	for _, key in ipairs(mod.weightKey) do
-		local tag = WEIGHT_KEY_VARIANT_TAGS[key]
-		if tag then
-			table.insert(tags, tag)
-		end
-	end
-	return tags
-end
+-- Group search results by ItemBaseType
+-- Returns a table: ItemBaseType -> { Mod, ... }
+local function groupModsByItemType(self)
+	-- For each mod, determine which item types it can appear on
+	-- and distribute it into groups keyed by ItemBaseType enum
+	local grouped = {} -- ItemBaseType -> { Mod, ... }
 
--- todo: now obsolete?
--- Check if a tier can spawn on a specific item type
---local function tierMatchesItemType(tier, itemType)
---	local types = expandWeightKeysToItemTypes(tier)
---	return types[itemType] ~= nil
---end
-
--- Group merged results by item type hierarchy
--- Returns a table: hierarchyPath -> { mergedEntry, ... }
-local function groupResultsByItemType(mergedResults, self)
-	-- For each merged result, determine which item types it can appear on
-	-- and distribute it into the hierarchy, filtering tiers per item type
-	local grouped = {} -- "Items|Armour|Body Armour" -> { mergedEntry, ... }
-	
-	for _, merged in ipairs(mergedResults) do
-		-- Build a map: itemType -> { tiers that can spawn on this item type }
-		local itemTypeToTiers = {} -- itemType -> { tier, ... }
-		for _, tier in ipairs(merged.tiers) do
-			local types = expandWeightKeysToItemTypes(tier)
-			for t in pairs(types) do
-				if not itemTypeToTiers[t] then
-					itemTypeToTiers[t] = {}
+	for modKey, mod in pairs(self.searchResults) do
+		for itemBaseType, canSpawn in pairs(mod.affectsItems) do
+			if canSpawn == true then
+				if not grouped[itemBaseType] then
+					grouped[itemBaseType] = {}
 				end
-				-- Check if this tier is already in the list for this item type
-				local alreadyInList = false
-				for _, existingTier in ipairs(itemTypeToTiers[t]) do
-					if existingTier.id == tier.id then
-						alreadyInList = true
-						break
-					end
-				end
-				if not alreadyInList then
-					table.insert(itemTypeToTiers[t], tier)
-				end
+				table.insert(grouped[itemBaseType], mod)
 			end
-		end
-		
-		-- For each item type, find the hierarchy path and add the merged entry with filtered tiers
-		for itemType, tiers in pairs(itemTypeToTiers) do
-			if #tiers == 0 then
-				goto continue
-			end
-			-- Skip item types that are disabled by filter checkboxes
-			if not isItemTypeEnabled(itemType, self) then
-				goto continue
-			end
-			local path = ITEM_TYPE_TO_PATH[itemType]
-			if path then
-				-- Find the parent category path (e.g., "Items|Armour" for "Items|Armour|Body Armour")
-				local parentPath = ""
-				for i = 1, #path - 1 do
-					if i > 1 then parentPath = parentPath .. "|" end
-					parentPath = parentPath .. path[i]
-				end
-				
-				if not grouped[parentPath] then
-					grouped[parentPath] = {}
-				end
-				
-				-- Check if this merged entry is already in this group
-				local alreadyAdded = false
-				for _, existing in ipairs(grouped[parentPath]) do
-					if existing.mergeKey == merged.mergeKey then
-						alreadyAdded = true
-						break
-					end
-				end
-				if not alreadyAdded then
-					-- Create a copy with item-specific tiers (only those that can spawn on this item type)
-					local entry = {
-						mergeKey = merged.mergeKey,
-						type = merged.type,
-						group = merged.group,
-						influenceType = merged.influenceType,
-						isElevated = merged.isElevated,
-						natural = merged.natural,
-						itemType = itemType,
-						tiers = tiers,
-					}
-					table.insert(grouped[parentPath], entry)
-				end
-				
-				-- Also add to the leaf node
-				local leafPath = parentPath
-				if parentPath ~= "" then leafPath = parentPath .. "|" end
-				leafPath = leafPath .. path[#path]
-				
-				if not grouped[leafPath] then
-					grouped[leafPath] = {}
-				end
-				
-				local alreadyAdded = false
-				for _, existing in ipairs(grouped[leafPath]) do
-					if existing.mergeKey == merged.mergeKey then
-						alreadyAdded = true
-						break
-					end
-				end
-				if not alreadyAdded then
-					local entry = {
-						mergeKey = merged.mergeKey,
-						type = merged.type,
-						group = merged.group,
-						influenceType = merged.influenceType,
-						isElevated = merged.isElevated,
-						natural = merged.natural,
-						itemType = itemType,
-						tiers = tiers,
-					}
-					table.insert(grouped[leafPath], entry)
-				end
-			end
-			::continue::
 		end
 	end
 	
@@ -1355,7 +1864,6 @@ end
 function StatFinderTabClass:runSearch()
 	if self.selectedStatIndex <= 1 then
 		self.searchResults = {}
-		self.mergedResults = {}
 		self.groupedResults = {}
 		self.expandedGroups = {}
 		self.expandedSections = {}
@@ -1364,15 +1872,13 @@ function StatFinderTabClass:runSearch()
 	local groupNames = collectGroupNames(self.selectedStatIndex, self)
 	if #groupNames == 0 then
 		self.searchResults = {}
-		self.mergedResults = {}
 		self.groupedResults = {}
 		self.expandedGroups = {}
 		self.expandedSections = {}
 		return
 	end
 	self.searchResults = searchModsInExplicit(groupNames, self)
-	self.mergedResults = mergeResults(self.searchResults)
-	self.groupedResults = groupResultsByItemType(self.mergedResults, self)
+	self.groupedResults = groupModsByItemType(self)
 	-- Reset expanded state on new search
 	self.expandedGroups = {}
 	-- Initialize expanded sections based on hierarchy defaults
@@ -1528,18 +2034,24 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 		-- A stat is selected — show results
 		local statEntry = supportedStatsList[self.selectedStatIndex]
 		local statName = statEntry and statEntry.label or "Unknown"
-		local mergedCount = #self.mergedResults
 		
-		if mergedCount == 0 then
+		-- Convert searchResults (keyed by modKey) to a list
+		local modList = {}
+		for _, mod in pairs(self.searchResults) do
+			table.insert(modList, mod)
+		end
+		local modCount = #modList
+		
+		if modCount == 0 then
 			-- No results found for the selected stat
 			resultsLabel.label = "^7Found 0 mods for ^2" .. statName .. "^7."
 		else
-			-- Results found — show merged count and total tier count
+			-- Results found — show mod count and total tier count
 			local totalTiers = 0
-			for _, merged in ipairs(self.mergedResults) do
-				totalTiers = totalTiers + #merged.tiers
+			for _, mod in ipairs(modList) do
+				totalTiers = totalTiers + #mod.tiers
 			end
-			resultsLabel.label = "^7Found ^2" .. mergedCount .. "^7 mod group(s) (^2" .. totalTiers .. "^7 tiers) for ^2" .. statName .. "^7."
+			resultsLabel.label = "^7Found ^2" .. modCount .. "^7 mod group(s) (^2" .. totalTiers .. "^7 tiers) for ^2" .. statName .. "^7."
 			
 			-- Draw hierarchical results tree
 			local panelX, panelY = resultsPanel:GetPos()
@@ -1550,33 +2062,34 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 			-- Track y positions for click handling
 			local clickTargets = {} -- {yStart, yEnd, type, data}
 			
-			-- Helper: draw a mod entry (single or multi-tier)
-			local function drawModEntry(merged, indent)
+			-- Helper: draw a mod entry using Mod:display(itemBaseType) (single or multi-tier)
+			local function drawModEntry(displayData, itemBaseType, indent)
 				local indentStr = string.rep("  ", indent)
 				local yStart = yPos
 				
 				-- Build composite key for expand/collapse state (independent per item type)
-				local expandKey = (merged.itemType or "") .. "|" .. merged.mergeKey
+				local expandKey = itemBaseType .. "|" .. displayData.modKey
 				
-				if #merged.tiers == 1 then
+				if displayData.tierCount == 1 then
 					-- Single-tier mod: display directly
-					local tier = merged.tiers[1]
+					local tier = displayData.tiers[1]
 					local modLine = string.format(
 						"%s^6%s^7 | ^3%s^7 | ^1%s^7 | ilvl %d^7 | %s",
 						indentStr,
-						tier.id,
-						merged.type or "N/A",
+						tier.tierId,
+						displayData.type or "N/A",
 						tier.affix or "",
-						tier.level or 0,
-						tier.statText or ""
+						tier.levelReq or 0,
+						tier.effect or ""
 					)
-					if merged.influenceType then
-						modLine = modLine .. string.format(" ^9[%s Influence]^7", merged.influenceType)
-						if merged.isElevated then
-							modLine = modLine .. " ^9[Elevated]^7"
-						end
-					elseif not merged.natural then
+					if displayData.isElevated then
+						modLine = modLine .. " ^9[Elevated]^7"
+					elseif displayData.isEssenceOnly then
 						modLine = modLine .. " ^9[Essence-only]^7"
+					end
+					-- Add tier tags
+					for _, tagName in ipairs(tier.tagNames) do
+						modLine = modLine .. string.format(" ^9[%s]^7", tagName)
 					end
 					DrawString(xPos, yPos, "LEFT", 13, "VAR", modLine)
 					yPos = yPos + 18
@@ -1589,42 +2102,35 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 						"%s^2%s^7 ^6%s^7 | ^3%s^7 | %d tier(s)",
 						indentStr,
 						expandIcon,
-						merged.mergeKey,
-						merged.type or "N/A",
-						#merged.tiers
+						displayData.modKey,
+						displayData.type or "N/A",
+						displayData.tierCount
 					)
-					if merged.influenceType then
-						headerLine = headerLine .. string.format(" ^9[%s Influence]^7", merged.influenceType)
-						if merged.isElevated then
-							headerLine = headerLine .. " ^9[Elevated]^7"
-						end
-					elseif not merged.natural then
+					if displayData.isElevated then
+						headerLine = headerLine .. " ^9[Elevated]^7"
+					elseif displayData.isEssenceOnly then
 						headerLine = headerLine .. " ^9[Essence-only]^7"
 					end
-					--if merged.tiers[1] and merged.tiers[1].statText then
-					--	headerLine = headerLine .. " | ^7" .. merged.tiers[1].statText
-					--end
 					
 					DrawString(xPos, yPos, "LEFT", 13, "VAR", headerLine)
-					table.insert(clickTargets, {yStart = yPos, yEnd = yPos + 18, type = "mod", data = merged})
+					table.insert(clickTargets, {yStart = yPos, yEnd = yPos + 18, type = "mod", data = {itemBaseType = itemBaseType, modKey = displayData.modKey}})
 					yPos = yPos + 18
 					
 					if isExpanded then
-						for j, tier in ipairs(merged.tiers) do
+						for j, tier in ipairs(displayData.tiers) do
 							if yPos > viewPort.y + viewPort.height then
 								break
 							end
 							local tierLine = string.format(
 								"%s    ^5%s^7 | ilvl %d^7 | %s",
 								indentStr,
-								tier.id,
-								tier.level or 0,
-								tier.statText or ""
+								tier.tierId,
+								tier.levelReq or 0,
+								tier.effect or ""
 							)
-							-- Add variant tags
-							local variantTags = getVariantTags(tier)
-							for _, tag in ipairs(variantTags) do
-								tierLine = tierLine .. string.format(" ^9[%s]^7", tag)
+							-- Add tier tags
+							for _, tagName in ipairs(tier.tagNames) do
+								tierLine = tierLine .. string.format(" ^9[%s]^7", tagName)
 							end
 							DrawString(xPos, yPos, "LEFT", 12, "VAR", tierLine)
 							yPos = yPos + 16
@@ -1633,6 +2139,23 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 				end
 				
 				return yPos - yStart
+			end
+			
+			-- Helper: collect all ItemBaseTypes under a hierarchy node
+			local function collectItemBaseTypes(node)
+				local types = {}
+				if node.keys then
+					for _, itemBaseType in ipairs(node.keys) do
+						table.insert(types, itemBaseType)
+					end
+				elseif node.children then
+					for _, child in ipairs(node.children) do
+						for _, t in ipairs(collectItemBaseTypes(child)) do
+							table.insert(types, t)
+						end
+					end
+				end
+				return types
 			end
 			
 			-- Helper: recursively draw hierarchy nodes
@@ -1648,9 +2171,14 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 				local indentStr = string.rep("  ", indent)
 				
 				if node.keys then
-					-- Leaf node: draw mods for this item type
-					local entries = self.groupedResults[path]
-					if entries and #entries > 0 then
+					-- Leaf node: draw mods for this ItemBaseType
+					local itemBaseType = node.keys[1]
+					local mods = self.groupedResults[itemBaseType]
+					if mods and #mods > 0 then
+						-- Filter by item type checkbox
+						if not isItemTypeEnabled(itemBaseType, self) then
+							return
+						end
 						-- Draw leaf header
 						local yStart = yPos
 						local isExpanded = self.expandedSections[path]
@@ -1660,18 +2188,21 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 							indentStr,
 							expandIcon,
 							node.name,
-							#entries
+							#mods
 						)
 						DrawString(xPos, yPos, "LEFT", 13, "VAR", leafLine)
 						table.insert(clickTargets, {yStart = yPos, yEnd = yPos + 18, type = "section", data = path})
 						yPos = yPos + 18
 						
 						if isExpanded then
-							for _, entry in ipairs(entries) do
+							for _, mod in ipairs(mods) do
 								if yPos > viewPort.y + viewPort.height then
 									break
 								end
-								drawModEntry(entry, indent + 1)
+								local displayData = mod:display(itemBaseType)
+								if displayData then
+									drawModEntry(displayData, itemBaseType, indent + 1)
+								end
 							end
 						end
 					end
@@ -1679,36 +2210,15 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 					-- Category node: draw header and recurse
 					local hasContent = false
 					local contentCount = 0
-					local function countContent(childNode, childPathPrefix)
-						local childPath = ""
-						for i, p in ipairs(childPathPrefix) do
-							if i > 1 then childPath = childPath .. "|" end
-							childPath = childPath .. p
-						end
-						if childPath ~= "" then childPath = childPath .. "|" end
-						childPath = childPath .. childNode.name
-						
-						if childNode.keys then
-							local entries = self.groupedResults[childPath]
-							if entries and #entries > 0 then
+					local categoryTypes = collectItemBaseTypes(node)
+					for _, itemBaseType in ipairs(categoryTypes) do
+						local mods = self.groupedResults[itemBaseType]
+						if mods and #mods > 0 then
+							if isItemTypeEnabled(itemBaseType, self) then
 								hasContent = true
-								contentCount = contentCount + #entries
-							end
-						elseif childNode.children then
-							local fullPath = {}
-							for _, p in ipairs(childPathPrefix) do table.insert(fullPath, p) end
-							table.insert(fullPath, childNode.name)
-							for _, grandchild in ipairs(childNode.children) do
-								countContent(grandchild, fullPath)
+								contentCount = contentCount + #mods
 							end
 						end
-					end
-					
-					local fullPath = {}
-					for _, p in ipairs(pathPrefix) do table.insert(fullPath, p) end
-					table.insert(fullPath, node.name)
-					for _, child in ipairs(node.children) do
-						countContent(child, fullPath)
 					end
 					
 					if hasContent then
@@ -1727,6 +2237,9 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 						yPos = yPos + 18
 						
 						if isExpanded then
+							local fullPath = {}
+							for _, p in ipairs(pathPrefix) do table.insert(fullPath, p) end
+							table.insert(fullPath, node.name)
 							for _, child in ipairs(node.children) do
 								if yPos > viewPort.y + viewPort.height then
 									break
@@ -1757,7 +2270,7 @@ function StatFinderTabClass:Draw(viewPort, inputEvents)
 									if target.type == "section" then
 										self.expandedSections[target.data] = not self.expandedSections[target.data]
 									elseif target.type == "mod" then
-										local expandKey = (target.data.itemType or "") .. "|" .. target.data.mergeKey
+										local expandKey = target.data.itemBaseType .. "|" .. target.data.modKey
 										self.expandedGroups[expandKey] = not self.expandedGroups[expandKey]
 									end
 									inputEvents[id] = nil
