@@ -67,7 +67,6 @@ local TierTags = {
 	WARD_BASE = 8,
 	ELEVATED = 9,
 	ESSENCE = 10,
-	ESSENCE_ONLY = 11,
 	DELVE = 12,
 	CRUSADER = 13,
 	ELDER = 14,
@@ -97,6 +96,31 @@ local TierTags = {
 	INFLUENCED = 38
 }
 
+local ESSENCE_ITEM_KEY_TO_ITEM_TYPE = {
+	["Amulet"] = {type = ItemBaseType.AMULET, tags = {}},
+	["Belt"] = {type = ItemBaseType.BELT, tags = {}},
+	["Body Armour"] = {type = ItemBaseType.BODY_ARMOUR, tags = {}},
+	["Boots"] = {type = ItemBaseType.BOOTS, tags = {}},
+	["Bow"] = {type = ItemBaseType.BOW, tags = {}},
+	["Claw"] = {type = ItemBaseType.CLAW, tags = {}},
+	["Dagger"] = {type = ItemBaseType.DAGGER, tags = {}},
+	["Gloves"] = {type = ItemBaseType.GLOVES, tags = {}},
+	["Helmet"] = {type = ItemBaseType.HELMET, tags = {}},
+	["One Handed Axe"] = {type = ItemBaseType.AXE, tags = {TierTags.ONE_HANDED}},
+	["One Handed Mace"] = {type = ItemBaseType.MACE, tags = {TierTags.ONE_HANDED}},
+	["One Handed Sword"] = {type = ItemBaseType.SWORD, tags = {TierTags.ONE_HANDED}},
+	["Quiver"] = {type = ItemBaseType.QUIVER, tags = {}},
+	["Ring"] = {type = ItemBaseType.RING, tags = {}},
+	["Sceptre"] = {type = ItemBaseType.SCEPTRE, tags = {}},
+	["Shield"] = {type = ItemBaseType.SHIELD, tags = {}},
+	["Staff"] = {type = ItemBaseType.STAFF, tags = {}},
+	["Thrusting One Handed Sword"] = {type = ItemBaseType.SWORD, tags = {}}, -- currently one handed sword and rapier always have same mod
+	["Two Handed Axe"] = {type = ItemBaseType.AXE, tags = {TierTags.TWO_HANDED}},
+	["Two Handed Mace"] = {type = ItemBaseType.MACE, tags = {TierTags.TWO_HANDED}},
+	["Two Handed Sword"] = {type = ItemBaseType.SWORD, tags = {TierTags.TWO_HANDED}},
+	["Wand"] = {type = ItemBaseType.WAND, tags = {}},
+}
+
 local TIER_TAG_TO_NAME_MAP = {
 	[TierTags.NATURAL] = "NATURAL",
 	[TierTags.DEX_BASE] = "DEX",
@@ -109,7 +133,6 @@ local TIER_TAG_TO_NAME_MAP = {
 	[TierTags.WARD_BASE] = "WARD",
 	[TierTags.ELEVATED] = "ELEVATED",
 	[TierTags.ESSENCE] = "ESSENCE",
-	[TierTags.ESSENCE_ONLY] = "ESSENCE",
 	[TierTags.DELVE] = "DELVE",
 	[TierTags.CRUSADER] = "CRUSADER",
 	[TierTags.ELDER] = "ELDER",
@@ -141,8 +164,6 @@ local TIER_TAG_TO_NAME_MAP = {
 local function sharedTagLogic(_, _, _, possibleTags, tags)
 	if possibleTags[TierTags.ELEVATED] and possibleTags[TierTags.ELEVATED] == true then
 		table.insert(tags, TierTags.ELEVATED)
-	elseif possibleTags[TierTags.ESSENCE_ONLY] and possibleTags[TierTags.ESSENCE_ONLY] == true then
-		table.insert(tags, TierTags.ESSENCE_ONLY)
 	elseif possibleTags[TierTags.INFLUENCED] == nil or possibleTags[TierTags.INFLUENCED] == false then
 		table.insert(tags, TierTags.NATURAL)
 	end
@@ -827,7 +848,7 @@ function ModClass.isElevated(mod)
 		return false
 	end
 	if mod.affix:match("^Elevated") then return true end
-	if mod.affix:match("^of the Essence") then return true end
+	if mod.affix:match("^of the Elevated") then return true end
 	if mod.affix:match("^of Elevated") then return true end
 	return false
 end
@@ -837,8 +858,7 @@ function ModClass.isEssenceOnly(mod)
 		return false
 	end
 	if mod.affix:match("^Essences") then return true end
-	if mod.affix:match("^of the Elevated") then return true end
-	if mod.affix:match("^of Elevated") then return true end
+	if mod.affix:match("^of the Essence") then return true end
 	return false
 end
 
@@ -851,24 +871,61 @@ local function dropsOnSomeItem(spawnsOnItems)
 	return false
 end
 
-function ModClass.fromExplicitData(tierId, modKey, dataMod, existingMod)
+function ModClass.fromExplicitData(tierId, modKey, dataMod, existingMod, affectedEssences)
 	if ModClass.isElevated(dataMod) then
 		local spawnsOnItems, possibleTags = ModClass.getTierItemsElevated(dataMod.weightKey, dataMod.weightVal)
 		if dropsOnSomeItem(spawnsOnItems) then
 			local itemTagMap = ModClass.processPossibleTags(dataMod.weightKey, dataMod.weightVal, spawnsOnItems, possibleTags)
 			local parsedTier = new("Tier"):Tier(tierId, dataMod.affix or "", dataMod[1] or "", dataMod.level or 0, spawnsOnItems, itemTagMap)
- 		if existingMod then
- 			existingMod:addTier(parsedTier)
- 			return nil
- 		end
- 		return new("Mod"):Mod(modKey, dataMod.type or "N/A", dataMod.group or "", spawnsOnItems, {parsedTier})
+ 			if existingMod then
+ 				existingMod:addTier(parsedTier)
+ 				return nil
+ 			end
+ 			return new("Mod"):Mod(modKey, dataMod.type or "N/A", dataMod.group or "", spawnsOnItems, {parsedTier})
  		end
  		return nil
  	end
  	if ModClass.isEssenceOnly(dataMod) then
-		-- todo: plan is, to get the items on which the mod can occur from Essence.lua file "here", then we will know, what are the item bases for the mod
+		local spawnsOnItems = {}
+		local typeTagMap = {}
+		-- first we add all item types with false value
+		for _, itemType in ipairs(WEIGHT_KEY_INFO["default"].adds) do
+			spawnsOnItems[itemType] = false
+		end
+		
+		for _, essence in ipairs(affectedEssences) do
+			local foundTier = false
+			for itemKey, essenceTierId in pairs(essence.mods) do
+				if essenceTierId == tierId then
+					foundTier = true
+					local itemType = ESSENCE_ITEM_KEY_TO_ITEM_TYPE[itemKey].type
+					spawnsOnItems[itemType] = true
+					if not typeTagMap[itemType] then
+						typeTagMap[itemType] = {TierTags.ESSENCE}
+					end
+					for _, tag in ipairs(ESSENCE_ITEM_KEY_TO_ITEM_TYPE[itemKey].tags) do
+						table.insert(typeTagMap[itemType], tag)
+					end
+				end
+			end
+			if foundTier == true then
+				break
+			end
+		end
+		for itemType, canSpawn in pairs(spawnsOnItems) do
+			if canSpawn == true then
+				if isValueInArray(typeTagMap[itemType], TierTags.TWO_HANDED) and isValueInArray(typeTagMap[itemType], TierTags.ONE_HANDED) then
+					typeTagMap[itemType] = {TierTags.ESSENCE} -- currently we have only essence / one-hand / two-hand tags possible for tags -> can just set to essence, as if both 1h and 2h tags are present can spawn on all variants...
+				end
+			end
+		end
+		if dropsOnSomeItem(spawnsOnItems) then
+			local parsedTier = new("Tier"):Tier(tierId, dataMod.affix or "", dataMod[1] or "", dataMod.level or 0, spawnsOnItems, typeTagMap)
+			return new("Mod"):Mod(modKey, dataMod.type or "N/A", dataMod.group or "", spawnsOnItems, {parsedTier})
+		end
+		return nil
 	    -- todo: then later, we will have to go over the essence file (the essences with type value matching the one in supportedStatsList) and add the info, that the mod can be
-		-- todo: also the tag thingies
+		-- todo: we have to also work with the fact, that the essence can force mods which are natural on some bases, to spawn on bases, where its normally not natural and only some tiers, for example "IncreasedCastSpeedTwoHand7"
 	end
 
 	local spawnsOnItems, possibleTags = ModClass.getTierItems(dataMod.weightKey, dataMod.weightVal)
@@ -1476,7 +1533,7 @@ end
 -- Mod search related functions  ========================================================================================================================================================================================
 
 -- Search ModExplicit for mods matching the given group names and filters
-local function searchModsInExplicit(groupNames)
+local function searchModsInExplicit(groupNames, affectedEssences, self)
 	-- In ModExplicit.lua, the table structure is:
 	-- ["Intelligence1"] = { type = "Suffix", affix = "of the Pupil", "+(8-12) to Intelligence", statOrder = { 1206 }, level = 1, group = "Intelligence", weightKey = { "ring", "amulet", ..., "default", }, weightVal = { 1000, 1000, ..., 0 }, modTags = { "attribute" }, tradeHashes = { [328541901] = { "+(8-12) to Intelligence" }, } },
 	local modData = require("Data.ModExplicit")
@@ -1504,9 +1561,9 @@ local function searchModsInExplicit(groupNames)
 		local modKey = ModClass.getModKey(modId)
 		local existingMod = results[modKey]
 		if existingMod then
-			ModClass.fromExplicitData(modId, modKey, mod, existingMod)
+			ModClass.fromExplicitData(modId, modKey, mod, existingMod, affectedEssences)
 		else
-			local modParent = ModClass.fromExplicitData(modId, modKey, mod, existingMod)
+			local modParent = ModClass.fromExplicitData(modId, modKey, mod, existingMod, affectedEssences)
 			if modParent then
 				results[modKey] = modParent
 			end
@@ -1549,6 +1606,44 @@ local function collectGroupNames(statIndex, self)
 		::continue::
 	end
 	return groupNames
+end
+
+local function collectEssences(statIndex, self)
+	if statIndex <= 1 then
+		return {}
+	end
+	local statEntry = supportedStatsList[statIndex]
+	if not statEntry then
+		return {}
+	end
+	local essenceTypes = {}
+	for _, group in ipairs(statEntry.groups) do
+		-- Respect Flat/Inc/More filters
+		if group.property == "searchFlat" and not self.searchFlat then
+			goto continue
+		end
+		if group.property == "searchInc" and not self.searchInc then
+			goto continue
+		end
+		if group.property == "searchMore" and not self.searchMore then
+			goto continue
+		end
+		for _, essenceType in ipairs(group.essenceTypes) do
+			essenceTypes[essenceType] = true
+		end
+		::continue::
+	end
+	
+	local essenceData = require("Data.Essence")
+	local affectedEssences = {}
+	for _, essenceInfo in pairs(essenceData) do
+		local essenceType = essenceInfo.type
+		if essenceTypes[essenceType] and essenceTypes[essenceType] == true then
+			table.insert(affectedEssences, essenceInfo)
+		end 
+	end
+	
+	return affectedEssences
 end
 
 
@@ -1829,7 +1924,8 @@ function StatFinderTabClass:runSearch()
 		self.expandedSections = {}
 		return
 	end
-	self.searchResults = searchModsInExplicit(groupNames, self)
+	local affectedEssences = collectEssences(self.selectedStatIndex, self)
+	self.searchResults = searchModsInExplicit(groupNames, affectedEssences, self)
 	self.groupedResults = groupModsByItemType(self)
 	-- Reset expanded state on new search
 	self.expandedGroups = {}
