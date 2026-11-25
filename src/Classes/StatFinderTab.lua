@@ -466,7 +466,10 @@ local WEIGHT_KEY_INFO = {
 				   adds = {ItemBaseType.AMULET, ItemBaseType.AXE, ItemBaseType.BELT, ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.BOW, ItemBaseType.CLAW,
 						   ItemBaseType.DAGGER, ItemBaseType.FISHING_ROD, ItemBaseType.FLASK, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.JEWEL, ItemBaseType.MACE,
 						   ItemBaseType.QUIVER, ItemBaseType.RING, ItemBaseType.SCEPTRE, ItemBaseType.SHIELD, ItemBaseType.STAFF, ItemBaseType.SWORD, ItemBaseType.WAND},
-				   removes = {}, tagsPositive = {}, tagsNegative = {}},
+				   removes = {ItemBaseType.AMULET, ItemBaseType.AXE, ItemBaseType.BELT, ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.BOW, ItemBaseType.CLAW,
+							  ItemBaseType.DAGGER, ItemBaseType.FISHING_ROD, ItemBaseType.FLASK, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.JEWEL, ItemBaseType.MACE,
+							  ItemBaseType.QUIVER, ItemBaseType.RING, ItemBaseType.SCEPTRE, ItemBaseType.SHIELD, ItemBaseType.STAFF, ItemBaseType.SWORD, ItemBaseType.WAND},
+				   tagsPositive = {}, tagsNegative = {}},
 	["armour"] = {priority = 2,
 				  adds = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
 				  removes = {ItemBaseType.BODY_ARMOUR, ItemBaseType.BOOTS, ItemBaseType.GLOVES, ItemBaseType.HELMET, ItemBaseType.SHIELD},
@@ -733,7 +736,7 @@ function TierClass:Tier(tierId, affix, effect, levelReq, spawnsOnItems, tags)
 	self.affix = affix					-- "Frozen"
 	self.effect = effect				-- "Adds (31-42) to (62-71) Cold Damage"
 	self.levelReq = levelReq			-- 43
-	self.spawnsOnItems = spawnsOnItems	-- { ItemBaseType }
+	self.spawnsOnItems = spawnsOnItems	-- {[ItemBaseType.HELMET] = true, [ItemBaseType.GLOVES] = false,...}
 	self.tags = tags					-- [ItemBaseType] -> { TierTags }
 	return self
 end
@@ -746,7 +749,10 @@ function ModClass:Mod(modKey, type, group, affectsItems, tiers)
 	self.modKey = modKey				-- "LocalAddedColdDamage"
 	self.type = type					-- "Prefix"/"Suffix"/"Implicit"
 	self.group = group					-- "LocalColdDamage"
-	self.affectsItems = affectsItems	-- {"Helmet", "Gloves", "Amulet"}
+	self.affectsItems = {}				-- {[ItemBaseType.HELMET] = true, [ItemBaseType.GLOVES] = false,...}
+	for itemBaseType, canSpawn in pairs(affectsItems) do	-- we use the same table for the first found tier, so we create copy, so the mod and tier don't reference the same table
+		self.affectsItems[itemBaseType] = canSpawn
+	end
 	self.tierCount = 1
 	self.tiers = tiers
 	return self
@@ -773,6 +779,11 @@ end
 
 function ModClass.addTier(self, newTier)
 	table.insert(self.tiers, newTier)
+	for itemBaseType, canSpawn in pairs(newTier.spawnsOnItems) do
+		if canSpawn == true then
+			self.affectsItems[itemBaseType] = true
+		end
+	end
 end
 
 -- Return only tiers that can spawn on the given ItemBaseType
@@ -871,6 +882,49 @@ local function dropsOnSomeItem(spawnsOnItems)
 	return false
 end
 
+function ModClass.findTierInAffectedEssences(tierId, affectedEssences, addEssenceTag)
+	local spawnsOnItems = {}
+	local itemTypeTagMap = {}
+
+	-- first we add all item types with false value
+	for _, itemType in ipairs(WEIGHT_KEY_INFO["default"].adds) do
+		spawnsOnItems[itemType] = false
+	end
+	
+	for _, essence in ipairs(affectedEssences) do
+		local foundTier = false
+		for itemKey, essenceTierId in pairs(essence.mods) do
+			if essenceTierId == tierId then
+				foundTier = true
+				local itemType = ESSENCE_ITEM_KEY_TO_ITEM_TYPE[itemKey].type
+				spawnsOnItems[itemType] = true
+				if not itemTypeTagMap[itemType] then
+					itemTypeTagMap[itemType] = {}
+					if addEssenceTag == true then
+						table.insert(itemTypeTagMap[itemType], TierTags.ESSENCE)
+					end
+				end
+				for _, tag in ipairs(ESSENCE_ITEM_KEY_TO_ITEM_TYPE[itemKey].tags) do
+					table.insert(itemTypeTagMap[itemType], tag)
+				end
+			end
+		end
+		if foundTier == true then break end
+	end
+	-- currently we have only one-hand / two-hand tags possible for tags -> if both 1h and 2h tags are present can spawn on all variants
+	for itemType, canSpawn in pairs(spawnsOnItems) do
+		if canSpawn == true then
+			if isValueInArray(itemTypeTagMap[itemType], TierTags.TWO_HANDED) and isValueInArray(itemTypeTagMap[itemType], TierTags.ONE_HANDED) then
+				itemTypeTagMap[itemType] = {}
+				if addEssenceTag == true then
+					table.insert(itemTypeTagMap[itemType], TierTags.ESSENCE)
+				end
+			end
+		end
+	end
+	return spawnsOnItems, itemTypeTagMap
+end
+
 function ModClass.fromExplicitData(tierId, modKey, dataMod, existingMod, affectedEssences)
 	if ModClass.isElevated(dataMod) then
 		local spawnsOnItems, possibleTags = ModClass.getTierItemsElevated(dataMod.weightKey, dataMod.weightVal)
@@ -886,57 +940,44 @@ function ModClass.fromExplicitData(tierId, modKey, dataMod, existingMod, affecte
  		return nil
  	end
  	if ModClass.isEssenceOnly(dataMod) then
-		local spawnsOnItems = {}
-		local typeTagMap = {}
-		-- first we add all item types with false value
-		for _, itemType in ipairs(WEIGHT_KEY_INFO["default"].adds) do
-			spawnsOnItems[itemType] = false
-		end
-		
-		for _, essence in ipairs(affectedEssences) do
-			local foundTier = false
-			for itemKey, essenceTierId in pairs(essence.mods) do
-				if essenceTierId == tierId then
-					foundTier = true
-					local itemType = ESSENCE_ITEM_KEY_TO_ITEM_TYPE[itemKey].type
-					spawnsOnItems[itemType] = true
-					if not typeTagMap[itemType] then
-						typeTagMap[itemType] = {TierTags.ESSENCE}
-					end
-					for _, tag in ipairs(ESSENCE_ITEM_KEY_TO_ITEM_TYPE[itemKey].tags) do
-						table.insert(typeTagMap[itemType], tag)
-					end
-				end
-			end
-			if foundTier == true then
-				break
-			end
-		end
-		for itemType, canSpawn in pairs(spawnsOnItems) do
-			if canSpawn == true then
-				if isValueInArray(typeTagMap[itemType], TierTags.TWO_HANDED) and isValueInArray(typeTagMap[itemType], TierTags.ONE_HANDED) then
-					typeTagMap[itemType] = {TierTags.ESSENCE} -- currently we have only essence / one-hand / two-hand tags possible for tags -> can just set to essence, as if both 1h and 2h tags are present can spawn on all variants...
-				end
-			end
-		end
+		local spawnsOnItems, typeTagMap = ModClass.findTierInAffectedEssences(tierId, affectedEssences, true)
 		if dropsOnSomeItem(spawnsOnItems) then
 			local parsedTier = new("Tier"):Tier(tierId, dataMod.affix or "", dataMod[1] or "", dataMod.level or 0, spawnsOnItems, typeTagMap)
 			return new("Mod"):Mod(modKey, dataMod.type or "N/A", dataMod.group or "", spawnsOnItems, {parsedTier})
 		end
 		return nil
-	    -- todo: then later, we will have to go over the essence file (the essences with type value matching the one in supportedStatsList) and add the info, that the mod can be
-		-- todo: we have to also work with the fact, that the essence can force mods which are natural on some bases, to spawn on bases, where its normally not natural and only some tiers, for example "IncreasedCastSpeedTwoHand7"
 	end
 
 	local spawnsOnItems, possibleTags = ModClass.getTierItems(dataMod.weightKey, dataMod.weightVal)
 	if dropsOnSomeItem(spawnsOnItems) then
 		local itemTagMap = ModClass.processPossibleTags(dataMod.weightKey, dataMod.weightVal, spawnsOnItems, possibleTags)
 		local parsedTier = new("Tier"):Tier(tierId, dataMod.affix or "", dataMod[1] or "", dataMod.level or 0, spawnsOnItems, itemTagMap)
+		-- Add info essence source info
+		local essenceOnItems, itemTypeTagMap = ModClass.findTierInAffectedEssences(tierId, affectedEssences, false)
+		for itemType, canSpawn in pairs(essenceOnItems) do
+			if canSpawn == true then
+				-- check if the mod could spawn on the item before
+				if parsedTier.spawnsOnItems[itemType] == false then
+					parsedTier.spawnsOnItems[itemType] = true
+					parsedTier.tags[itemType] = {TierTags.ESSENCE}
+				else
+					-- if the tier can spawn on the item naturally we add the tag that it can also be forced by an essence
+					if not isValueInArray(parsedTier.tags[itemType], TierTags.ESSENCE) then	-- for case when same mod tier on 1h and 2h variant (in Essence.lua), so we don't get two ESSENCE tags
+						table.insert(parsedTier.tags[itemType], TierTags.ESSENCE)
+					end
+				end
+				-- Currently ignore the case, that previously the mod could naturally spawn on only 1h variant and essence can also force it onto 2h (vice versa) - not sure if such case exists
+				for _, tag in ipairs(itemTypeTagMap[itemType]) do
+					table.insert(parsedTier.tags[itemType], tag)
+				end
+			end
+		end
+		
 		if existingMod then
 			existingMod:addTier(parsedTier)
 			return nil
 		end
-		return new("Mod"):Mod(modKey, dataMod.type or "N/A", dataMod.group or "", spawnsOnItems, {parsedTier})	
+		return new("Mod"):Mod(modKey, dataMod.type or "N/A", dataMod.group or "", spawnsOnItems, {parsedTier})
 	end
 	return nil
 end
